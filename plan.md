@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 3 — Overview page
-**Next task:** 3.1
+**Next task:** 3.2
 **Blocked on:** nothing
 
 ## Progress log
@@ -55,6 +55,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 2.2 | Migration 003: artist/album/track_year_summary (music only) + monthly/yearly_listening_summary (all events, music breakdown column). Check 3 now validates the view; all green. |
 | 2026-06-12 | 2.3 | Added checks 3b (monthly↔yearly) and 4b (artist-year↔all-time): 9 checks, all pass on real data. Sample year queries sensible (2017 top: RHCP/Arkells/Frank Turner; 2025 top track: squabble up). |
 | 2026-06-12 | 2.G | Phase 2 gate: all views exist, 9/9 validation checks pass, sample outputs recorded above. |
+| 2026-06-12 | 3.1 | lib/queries.ts: typed read-only query layer (overview stats, listening-over-time, top artists/albums/tracks, available years) parameterized by UTC date range + plays/minutes metric. recharts installed; better-sqlite3 marked serverExternal. Smoke-tested: all-time 123,669 meaningful plays / 6,967.8 music hours / 4,642 artists. |
 
 ---
 
@@ -478,7 +479,7 @@ Goal: all derived views exist and reconcile against imported data.
 
 Goal: the all-time dashboard, fully styled, on real data.
 
-- [ ] **3.1** Server-side data access layer: typed query functions over the
+- [x] **3.1** Server-side data access layer: typed query functions over the
       views, parameterized by date range.
 - [ ] **3.2** Summary cards row (plays, hours, unique artists/albums/tracks,
       first/last date) — designed, not default-styled.
