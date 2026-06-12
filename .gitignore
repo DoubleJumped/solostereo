@@ -1,5 +1,4 @@
 # personal listening data — never commit
-Spotify Extended Streaming History/
 data/raw/
 data/*.db
 data/*.db-journal

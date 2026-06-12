@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 1 — Historical data ingestion
-**Next task:** 1.1
+**Next task:** 1.2
 **Blocked on:** nothing
 
 ## Progress log
@@ -44,6 +44,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 0.4 | README written: setup, stack rationale, assumptions (UTC, artist-name keying, dropped ip_addr), metric definitions, layout, validation. |
 | 2026-06-12 | 0.5 | Styled placeholder Overview: hero wordmark, ghost stat-card row, ghost hero-chart empty state with import instructions. Desktop + mobile verified via screenshots; nav made scroll-safe on mobile. |
 | 2026-06-12 | 0.G | Phase 0 gate passed: fresh clone to temp dir → npm install, npm run migrate (001 applied), npm run dev → 200 on :3100. |
+| 2026-06-12 | 1.1 | Raw export (30 files) moved to data/raw/spotify/. 20-record fixture written: music incl. 30s-threshold edges + 0ms, exact-duplicate pair, podcast x2, audiobook x2, missing-field rows (null album/URI/all-metadata/booleans). |
 
 ---
 
@@ -433,7 +434,7 @@ placeholder home page displays the `solostereo` wordmark.
 
 Goal: real export imported, idempotent, validated.
 
-- [ ] **1.1** Move the raw export into `data/raw/spotify/` (gitignored).
+- [x] **1.1** Move the raw export into `data/raw/spotify/` (gitignored).
       Create `data/fixtures/sample-history.json` with ~20 synthetic records
       covering music, podcast, audiobook, missing-field, and duplicate cases.
 - [ ] **1.2** Importer (`npm run import`): glob audio + video JSON files,
