@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 2 — SQL analytics layer
-**Next task:** 2.2
+**Next task:** 2.3
 **Blocked on:** nothing
 
 ## Progress log
@@ -52,6 +52,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 1.6 | README import docs expanded: how to request the export, where files go, import commands, and a guide to reading the summary/idempotency proof. |
 | 2026-06-12 | 1.G | Phase 1 gate: real archive imported and idempotent (208,270 rows; see 1.5). Validation green. |
 | 2026-06-12 | 2.1 | Migration 002: music_listening_events + artist/album/track_summary (meaningful + raw plays, minutes, first/last, distinct tracks). Checks 4, 5, 7 went live and pass on real data; top-artist sanity check sensible. |
+| 2026-06-12 | 2.2 | Migration 003: artist/album/track_year_summary (music only) + monthly/yearly_listening_summary (all events, music breakdown column). Check 3 now validates the view; all green. |
 
 ---
 
@@ -464,7 +465,7 @@ Goal: all derived views exist and reconcile against imported data.
 - [x] **2.1** `music_listening_events` view (excludes podcasts + audiobooks)
       and the three all-time summary views (artist / album / track) with both
       meaningful and raw play counts plus listening minutes.
-- [ ] **2.2** Year-grain views (`*_year_summary`) and
+- [x] **2.2** Year-grain views (`*_year_summary`) and
       `monthly_listening_summary` / `yearly_listening_summary`.
 - [ ] **2.3** Extend `npm run validate` with reconciliation checks 3–7 against
       the real data; verify top-artists/albums/tracks-by-year queries return
