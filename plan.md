@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 1 — Historical data ingestion
-**Next task:** 1.3
+**Next task:** 1.4
 **Blocked on:** nothing
 
 ## Progress log
@@ -46,6 +46,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 0.G | Phase 0 gate passed: fresh clone to temp dir → npm install, npm run migrate (001 applied), npm run dev → 200 on :3100. |
 | 2026-06-12 | 1.1 | Raw export (30 files) moved to data/raw/spotify/. 20-record fixture written: music incl. 30s-threshold edges + 0ms, exact-duplicate pair, podcast x2, audiobook x2, missing-field rows (null album/URI/all-metadata/booleans). |
 | 2026-06-12 | 1.2 | scripts/import.ts: glob audio+video files (or explicit dir/file arg), normalize per §5.1, sha256 dedup hash, INSERT OR IGNORE in per-file transactions, per-file logging. Fixture on scratch DB: 20 read / 19 inserted / 1 dup skipped. |
+| 2026-06-12 | 1.3 | lib/import-summary.ts: full §9 import summary after every run (music/podcast/audiobook split, missing names, date range, hours). Fixture verified: 19 total = 15 music + 2 podcast + 2 audiobook. |
 
 ---
 
@@ -441,7 +442,7 @@ Goal: real export imported, idempotent, validated.
 - [x] **1.2** Importer (`npm run import`): glob audio + video JSON files,
       normalize per the section 5.1 mapping, compute dedup hash,
       `INSERT OR IGNORE`, per-file logging.
-- [ ] **1.3** Import summary report printed after every run (section 9 list).
+- [x] **1.3** Import summary report printed after every run (section 9 list).
 - [ ] **1.4** `npm run validate` implementing all section 9 checks,
       exit non-zero on failure; importer runs it automatically.
 - [ ] **1.5** Run importer against the fixture **twice**; show duplicates are

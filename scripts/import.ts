@@ -14,6 +14,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { openDb } from "../lib/db";
+import { computeDbSummary, printImportSummary } from "../lib/import-summary";
 
 const DEFAULT_SOURCE = path.join("data", "raw", "spotify");
 
@@ -178,11 +179,10 @@ export function runImport(source: string): {
 function main() {
   const source = process.argv[2] ?? DEFAULT_SOURCE;
   const totals = runImport(source);
-  console.log(
-    `\nimport complete: ${totals.filesProcessed} file(s), ` +
-      `${totals.rowsRead} read, ${totals.rowsInserted} inserted, ` +
-      `${totals.duplicatesSkipped} duplicate(s) skipped`,
-  );
+
+  const db = openDb();
+  printImportSummary(totals, computeDbSummary(db));
+  db.close();
 }
 
 main();
