@@ -192,6 +192,40 @@ export function getTopTracks(
     .all(...params, limit) as RankedTrack[];
 }
 
+/** Inclusive range covering one UTC calendar year. */
+export function yearRange(year: number): DateRange {
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
+}
+
+export interface MonthTopArtist {
+  month: string; // "01".."12"
+  artistName: string;
+  listeningMinutes: number;
+}
+
+/** The most-listened artist (by time) for each month of a year. */
+export function getTopArtistPerMonth(year: number): MonthTopArtist[] {
+  return db()
+    .prepare(
+      `SELECT month, artist_name AS artistName, minutes AS listeningMinutes
+       FROM (
+         SELECT strftime('%m', played_at) AS month,
+                artist_name,
+                SUM(ms_played) / 60000.0 AS minutes,
+                ROW_NUMBER() OVER (
+                  PARTITION BY strftime('%m', played_at)
+                  ORDER BY SUM(ms_played) DESC
+                ) AS rn
+         FROM music_listening_events
+         WHERE strftime('%Y', played_at) = ? AND artist_name IS NOT NULL
+         GROUP BY month, artist_name
+       )
+       WHERE rn = 1
+       ORDER BY month`,
+    )
+    .all(String(year)) as MonthTopArtist[];
+}
+
 /** Years present in the data, descending — drives year selectors. */
 export function getAvailableYears(): number[] {
   return (
