@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 0 — Repository setup
-**Next task:** 0.1
+**Next task:** 0.2
 **Blocked on:** nothing
 
 ## Progress log
@@ -38,6 +38,7 @@ script exists, Phase 1 onward).
 | Date | Task | Note |
 |------|------|------|
 | 2026-06-12 | plan | Plan written, git repo initialized. Raw Spotify export already present in repo folder (gitignored). |
+| 2026-06-12 | 0.1 | Next.js 16 (App Router) + TS + Tailwind v4 scaffolded at repo root; `.env.example` added; dev server verified responding 200 on :3000. |
 
 ---
 
@@ -406,7 +407,7 @@ earliest event date, latest event date, total listening hours
 Goal: app launches locally, migration runs, design system exists, styled
 placeholder home page displays the `solostereo` wordmark.
 
-- [ ] **0.1** Scaffold Next.js (App Router) + TypeScript + Tailwind in this
+- [x] **0.1** Scaffold Next.js (App Router) + TypeScript + Tailwind in this
       folder. Add `.env.example`. App boots with `npm run dev`.
 - [ ] **0.2** Design system: choose and load typefaces (display + body),
       define color tokens (near-black canvas, warm off-white, one accent),
