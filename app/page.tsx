@@ -2,7 +2,9 @@ import { MetricToggle } from "@/components/metric-toggle";
 import { OverviewEmptyState } from "@/components/overview/empty-state";
 import { ListeningHero } from "@/components/overview/listening-hero";
 import { SummaryCards } from "@/components/overview/summary-cards";
+import { RangeControl } from "@/components/range-control";
 import { RankingList } from "@/components/ranking-list";
+import { resolveRange } from "@/lib/date-range";
 import { fmtInt, fmtMinutes } from "@/lib/format";
 import {
   getListeningOverTime,
@@ -33,12 +35,17 @@ function rankValue(
 export default async function OverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ metric?: string }>;
+  searchParams: Promise<{
+    metric?: string;
+    range?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
-  const stats = getOverviewStats();
-  if (stats.rawPlays === 0) return <OverviewEmptyState />;
+  if (getOverviewStats().rawPlays === 0) return <OverviewEmptyState />;
 
   const params = await searchParams;
+  const { preset, range, label } = resolveRange(params);
   const forced =
     params.metric === "plays" || params.metric === "minutes"
       ? (params.metric as RankMetric)
@@ -48,18 +55,25 @@ export default async function OverviewPage({
   const albumMetric = forced ?? "minutes";
   const trackMetric = forced ?? "plays";
 
-  const monthBuckets = getListeningOverTime("month");
-  const yearBuckets = getListeningOverTime("year");
-  const topArtists = getTopArtists({}, artistMetric, 10);
-  const topAlbums = getTopAlbums({}, albumMetric, 10);
-  const topTracks = getTopTracks({}, trackMetric, 10);
+  const stats = getOverviewStats(range);
+  const monthBuckets = getListeningOverTime("month", range);
+  const yearBuckets = getListeningOverTime("year", range);
+  const topArtists = getTopArtists(range, artistMetric, 10);
+  const topAlbums = getTopAlbums(range, albumMetric, 10);
+  const topTracks = getTopTracks(range, trackMetric, 10);
 
   return (
     <div className="flex flex-col gap-10">
-      <section className="flex items-baseline justify-between pt-2">
-        <h1 className="font-display text-5xl lowercase tracking-tight">
-          overview
-        </h1>
+      <section className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-5xl lowercase tracking-tight">
+            overview
+          </h1>
+          <p className="mt-1 text-sm lowercase text-muted-foreground">
+            {label}
+          </p>
+        </div>
+        <RangeControl active={preset} />
       </section>
 
       <SummaryCards stats={stats} />
