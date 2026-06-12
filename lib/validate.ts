@@ -84,6 +84,24 @@ export function runValidation(db: Database.Database): CheckResult[] {
     });
   }
 
+  // 3b. Monthly totals reconcile to yearly totals (both views).
+  if (
+    viewExists(db, "monthly_listening_summary") &&
+    viewExists(db, "yearly_listening_summary")
+  ) {
+    const m = one<{ ms: number | null }>(
+      `SELECT SUM(total_ms_played) AS ms FROM monthly_listening_summary`,
+    );
+    const y = one<{ ms: number | null }>(
+      `SELECT SUM(total_ms_played) AS ms FROM yearly_listening_summary`,
+    );
+    results.push({
+      name: "3b monthly totals reconcile to yearly totals",
+      status: (m.ms ?? 0) === (y.ms ?? 0) ? "pass" : "fail",
+      detail: `monthly sum ${m.ms ?? 0} vs yearly sum ${y.ms ?? 0}`,
+    });
+  }
+
   // 4. Artist summary reconciles to music-event totals.
   if (viewExists(db, "artist_summary")) {
     const view = one<{ ms: number | null; plays: number | null }>(
@@ -105,6 +123,25 @@ export function runValidation(db: Database.Database): CheckResult[] {
       name: "4 artist summary reconciles to music events",
       status: "skip",
       detail: "artist_summary view not present yet (Phase 2)",
+    });
+  }
+
+  // 4b. Artist-by-year totals reconcile to all-time artist totals.
+  if (viewExists(db, "artist_year_summary") && viewExists(db, "artist_summary")) {
+    const y = one<{ ms: number | null; plays: number | null }>(
+      `SELECT SUM(total_ms_played) AS ms, SUM(raw_plays) AS plays
+       FROM artist_year_summary`,
+    );
+    const a = one<{ ms: number | null; plays: number | null }>(
+      `SELECT SUM(total_ms_played) AS ms, SUM(raw_plays) AS plays
+       FROM artist_summary`,
+    );
+    const ok =
+      (y.ms ?? 0) === (a.ms ?? 0) && (y.plays ?? 0) === (a.plays ?? 0);
+    results.push({
+      name: "4b artist-by-year reconciles to all-time artist totals",
+      status: ok ? "pass" : "fail",
+      detail: `year ms ${y.ms ?? 0} / plays ${y.plays ?? 0} vs all-time ms ${a.ms ?? 0} / plays ${a.plays ?? 0}`,
     });
   }
 

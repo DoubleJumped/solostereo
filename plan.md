@@ -29,8 +29,8 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phase 2 — SQL analytics layer
-**Next task:** 2.3
+**Current phase:** Phase 3 — Overview page
+**Next task:** 3.1
 **Blocked on:** nothing
 
 ## Progress log
@@ -53,6 +53,8 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 1.G | Phase 1 gate: real archive imported and idempotent (208,270 rows; see 1.5). Validation green. |
 | 2026-06-12 | 2.1 | Migration 002: music_listening_events + artist/album/track_summary (meaningful + raw plays, minutes, first/last, distinct tracks). Checks 4, 5, 7 went live and pass on real data; top-artist sanity check sensible. |
 | 2026-06-12 | 2.2 | Migration 003: artist/album/track_year_summary (music only) + monthly/yearly_listening_summary (all events, music breakdown column). Check 3 now validates the view; all green. |
+| 2026-06-12 | 2.3 | Added checks 3b (monthly↔yearly) and 4b (artist-year↔all-time): 9 checks, all pass on real data. Sample year queries sensible (2017 top: RHCP/Arkells/Frank Turner; 2025 top track: squabble up). |
+| 2026-06-12 | 2.G | Phase 2 gate: all views exist, 9/9 validation checks pass, sample outputs recorded above. |
 
 ---
 
@@ -467,10 +469,10 @@ Goal: all derived views exist and reconcile against imported data.
       meaningful and raw play counts plus listening minutes.
 - [x] **2.2** Year-grain views (`*_year_summary`) and
       `monthly_listening_summary` / `yearly_listening_summary`.
-- [ ] **2.3** Extend `npm run validate` with reconciliation checks 3–7 against
+- [x] **2.3** Extend `npm run validate` with reconciliation checks 3–7 against
       the real data; verify top-artists/albums/tracks-by-year queries return
       sensible results.
-- [ ] **2.G** Phase gate: report sample query output and validation results; stop.
+- [x] **2.G** Phase gate: report sample query output and validation results; stop.
 
 ### Phase 3: Overview page
 
