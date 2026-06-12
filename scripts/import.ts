@@ -15,6 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { openDb } from "../lib/db";
 import { computeDbSummary, printImportSummary } from "../lib/import-summary";
+import { printValidation, runValidation } from "../lib/validate";
 
 const DEFAULT_SOURCE = path.join("data", "raw", "spotify");
 
@@ -182,7 +183,9 @@ function main() {
 
   const db = openDb();
   printImportSummary(totals, computeDbSummary(db));
+  const ok = printValidation(runValidation(db));
   db.close();
+  if (!ok) process.exit(1);
 }
 
 main();
