@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 0 — Repository setup
-**Next task:** 0.5
+**Next task:** 0.G
 **Blocked on:** nothing
 
 ## Progress log
@@ -42,6 +42,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 0.2 | Design system: Fraunces (display) + Inter (body) + Geist Mono; warm near-black/off-white/amber oklch tokens in globals.css; shadcn/ui (radix, nova preset); wordmark + nav shell + 4 stub pages; DESIGN.md written. All routes 200. |
 | 2026-06-12 | 0.3 | better-sqlite3 + lib/db.ts (WAL) + scripts/migrate.ts runner; migration 001 creates listening_events + 4 indexes. Ran twice: idempotent. Schema verified. |
 | 2026-06-12 | 0.4 | README written: setup, stack rationale, assumptions (UTC, artist-name keying, dropped ip_addr), metric definitions, layout, validation. |
+| 2026-06-12 | 0.5 | Styled placeholder Overview: hero wordmark, ghost stat-card row, ghost hero-chart empty state with import instructions. Desktop + mobile verified via screenshots; nav made scroll-safe on mobile. |
 
 ---
 
@@ -422,7 +423,7 @@ placeholder home page displays the `solostereo` wordmark.
       the dedup unique constraint and all indexes from section 7.
 - [x] **0.4** README: setup instructions, stack rationale, assumptions
       (UTC bucketing, artist-name keying, dropped `ip_addr`).
-- [ ] **0.5** Styled placeholder home page: wordmark, design tokens visibly in
+- [x] **0.5** Styled placeholder home page: wordmark, design tokens visibly in
       use, empty-state treatment that will become the Overview page.
 - [ ] **0.G** Phase gate: fresh clone → `npm install`, `npm run migrate`,
       `npm run dev` all work. Report and stop.

@@ -17,9 +17,9 @@ export function SiteNav() {
 
   return (
     <header className="border-b border-border">
-      <nav className="mx-auto flex h-14 max-w-6xl items-baseline gap-8 px-6">
+      <nav className="mx-auto flex h-14 max-w-6xl items-baseline gap-5 overflow-x-auto px-6 sm:gap-8">
         <Wordmark className="text-xl" />
-        <ul className="flex items-baseline gap-6">
+        <ul className="flex items-baseline gap-4 sm:gap-6">
           {pages.map(({ href, label }) => {
             const active =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -28,7 +28,7 @@ export function SiteNav() {
                 <Link
                   href={href}
                   className={cn(
-                    "text-sm lowercase tracking-wide transition-colors",
+                    "whitespace-nowrap text-sm lowercase tracking-wide transition-colors",
                     active
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground",
