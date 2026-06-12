@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 0 — Repository setup
-**Next task:** 0.2
+**Next task:** 0.3
 **Blocked on:** nothing
 
 ## Progress log
@@ -39,6 +39,7 @@ script exists, Phase 1 onward).
 |------|------|------|
 | 2026-06-12 | plan | Plan written, git repo initialized. Raw Spotify export already present in repo folder (gitignored). |
 | 2026-06-12 | 0.1 | Next.js 16 (App Router) + TS + Tailwind v4 scaffolded at repo root; `.env.example` added; dev server verified responding 200 on :3000. |
+| 2026-06-12 | 0.2 | Design system: Fraunces (display) + Inter (body) + Geist Mono; warm near-black/off-white/amber oklch tokens in globals.css; shadcn/ui (radix, nova preset); wordmark + nav shell + 4 stub pages; DESIGN.md written. All routes 200. |
 
 ---
 
@@ -409,7 +410,7 @@ placeholder home page displays the `solostereo` wordmark.
 
 - [x] **0.1** Scaffold Next.js (App Router) + TypeScript + Tailwind in this
       folder. Add `.env.example`. App boots with `npm run dev`.
-- [ ] **0.2** Design system: choose and load typefaces (display + body),
+- [x] **0.2** Design system: choose and load typefaces (display + body),
       define color tokens (near-black canvas, warm off-white, one accent),
       type scale, and spacing in Tailwind config; set up shadcn/ui; build the
       `solostereo` wordmark and a base layout shell (nav with the four pages
