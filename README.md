@@ -20,17 +20,35 @@ integration).
 
 ### Importing your listening history
 
-Place your Spotify **Extended Streaming History** JSON files
-(`Streaming_History_Audio_*.json` and `Streaming_History_Video_*.json`) in
-`data/raw/spotify/`, then:
+Request the **Extended Streaming History** export from Spotify
+(Privacy Settings → Download your data; it arrives as a zip after a few
+days). Place the JSON files (`Streaming_History_Audio_*.json` **and**
+`Streaming_History_Video_*.json` — video files share the schema and
+occasionally contain real events) in `data/raw/spotify/`, then:
 
 ```bash
-npm run import      # available from Phase 1
+npm run import                  # imports data/raw/spotify/
+npm run import -- <dir|file>    # or another directory / a single file
 ```
 
-The importer is idempotent — rerunning it never duplicates records (enforced
-by a database UNIQUE constraint, not importer logic). It prints a summary and
-runs `npm run validate` automatically.
+The importer is idempotent — rerunning it never duplicates records. Each
+record gets a deterministic SHA-256 dedup hash (timestamp + URIs + names +
+ms_played) with a database `UNIQUE` constraint and `INSERT OR IGNORE`, so
+safety is enforced by the schema, not importer logic. The export itself
+contains a handful of exact-duplicate rows; these are also collapsed.
+
+**Reading the import summary.** After every run the importer prints per-file
+counts, a summary, and runs `npm run validate` automatically:
+
+- `raw rows read / rows inserted / duplicates skipped` — on a first import,
+  inserted ≈ read (minus in-export duplicates). On a repeat import, inserted
+  is 0 and every row counts as a duplicate — that is the idempotency proof.
+- `music / podcast / audiobook rows` — every row is kept; podcasts and
+  audiobooks are simply excluded from music analytics by a view.
+- `music rows w/o artist / track` — rare export rows with missing metadata;
+  they are preserved but excluded from rankings.
+- `earliest / latest event, total listening hours` — quick sanity check that
+  the date span and volume match what you expect.
 
 ## Stack and rationale
 
