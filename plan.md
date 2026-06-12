@@ -29,8 +29,8 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phase 0 — Repository setup
-**Next task:** 0.G
+**Current phase:** Phase 1 — Historical data ingestion
+**Next task:** 1.1
 **Blocked on:** nothing
 
 ## Progress log
@@ -43,6 +43,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 0.3 | better-sqlite3 + lib/db.ts (WAL) + scripts/migrate.ts runner; migration 001 creates listening_events + 4 indexes. Ran twice: idempotent. Schema verified. |
 | 2026-06-12 | 0.4 | README written: setup, stack rationale, assumptions (UTC, artist-name keying, dropped ip_addr), metric definitions, layout, validation. |
 | 2026-06-12 | 0.5 | Styled placeholder Overview: hero wordmark, ghost stat-card row, ghost hero-chart empty state with import instructions. Desktop + mobile verified via screenshots; nav made scroll-safe on mobile. |
+| 2026-06-12 | 0.G | Phase 0 gate passed: fresh clone to temp dir → npm install, npm run migrate (001 applied), npm run dev → 200 on :3100. |
 
 ---
 
@@ -425,7 +426,7 @@ placeholder home page displays the `solostereo` wordmark.
       (UTC bucketing, artist-name keying, dropped `ip_addr`).
 - [x] **0.5** Styled placeholder home page: wordmark, design tokens visibly in
       use, empty-state treatment that will become the Overview page.
-- [ ] **0.G** Phase gate: fresh clone → `npm install`, `npm run migrate`,
+- [x] **0.G** Phase gate: fresh clone → `npm install`, `npm run migrate`,
       `npm run dev` all work. Report and stop.
 
 ### Phase 1: Historical data ingestion
