@@ -29,8 +29,8 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phase 1 — Historical data ingestion
-**Next task:** 1.G
+**Current phase:** Phase 2 — SQL analytics layer
+**Next task:** 2.1
 **Blocked on:** nothing
 
 ## Progress log
@@ -50,6 +50,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 1.4 | lib/validate.ts + npm run validate: checks 1-3, 6 live; 4, 5, 7 auto-skip until Phase 2 views exist, then run for real. Importer runs validation automatically and exits non-zero on failure. Fixture DB: all checks pass. |
 | 2026-06-12 | 1.5 | Fixture x2: run1 20 read/19 inserted/1 dup; run2 0 inserted/20 dups. Real export x2: run1 29 files, 208,355 read, 208,270 inserted, 85 in-export dups; run2 0 inserted/208,355 dups, total stays 208,270. 207,622 music + 647 podcast + 1 audiobook; 2014-11-23 → 2026-06-10; 7,219.7 h. All validation passed both runs. |
 | 2026-06-12 | 1.6 | README import docs expanded: how to request the export, where files go, import commands, and a guide to reading the summary/idempotency proof. |
+| 2026-06-12 | 1.G | Phase 1 gate: real archive imported and idempotent (208,270 rows; see 1.5). Validation green. |
 
 ---
 
@@ -453,7 +454,7 @@ Goal: real export imported, idempotent, validated.
       record row counts in the Progress log.
 - [x] **1.6** README: where to place JSON files, how to import, what the
       summary means.
-- [ ] **1.G** Phase gate: report results (including real import counts) and stop.
+- [x] **1.G** Phase gate: report results (including real import counts) and stop.
 
 ### Phase 2: SQL analytics layer
 
