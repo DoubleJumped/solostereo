@@ -1,0 +1,21 @@
+# personal listening data — never commit
+Spotify Extended Streaming History/
+data/raw/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# dependencies / build
+node_modules/
+.next/
+out/
+
+# env
+.env
+.env.local
+.env*.local
+
+# misc
+.DS_Store
+*.log
