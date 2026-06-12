@@ -1,4 +1,6 @@
+import { MetricToggle } from "@/components/metric-toggle";
 import { PageStub } from "@/components/page-stub";
+import { ArtistBars } from "@/components/year/artist-bars";
 import { YearSelector } from "@/components/year/year-selector";
 import { fmtInt } from "@/lib/format";
 import {
@@ -6,6 +8,7 @@ import {
   getOverviewStats,
   getTopArtists,
   yearRange,
+  type RankMetric,
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +33,15 @@ export default async function YearInReviewPage({
   const year = years.includes(requested) ? requested : years[0];
   const range = yearRange(year);
 
+  const forced =
+    params.metric === "plays" || params.metric === "minutes"
+      ? (params.metric as RankMetric)
+      : undefined;
+  const artistMetric = forced ?? "minutes";
+
   const stats = getOverviewStats(range);
   const topArtist = getTopArtists(range, "minutes", 1)[0];
+  const top25 = getTopArtists(range, artistMetric, 25);
 
   return (
     <div className="flex flex-col gap-10">
@@ -73,6 +83,17 @@ export default async function YearInReviewPage({
           </div>
         </dl>
       </header>
+
+      {/* top 25 artists as a designed graphic (task 4.2) */}
+      <section className="flex flex-col gap-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-3xl lowercase tracking-tight">
+            the artists
+          </h2>
+          <MetricToggle />
+        </div>
+        <ArtistBars rows={top25} metric={artistMetric} />
+      </section>
     </div>
   );
 }

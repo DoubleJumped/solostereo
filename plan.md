@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 4 — Year in review
-**Next task:** 4.2
+**Next task:** 4.3
 **Blocked on:** nothing
 
 ## Progress log
@@ -62,6 +62,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 3.5 | Range control: presets all/ytd/prev/30d/90d + custom from/to date inputs in ?range= params; cards, hero, and rankings all re-query. Verified: 2025 preset's top tracks match task 2.3 SQL sample exactly (UI↔SQL reconciliation). |
 | 2026-06-12 | 3.G | Phase 3 gate: lint clean, production build green, 9/9 validation, desktop+mobile screenshots verified. Overview complete on real data. |
 | 2026-06-12 | 4.1 | /year: year chips (2014–2026 from data), editorial header — giant amber Fraunces year numeral + hours/plays/top-artist display stats. getTopArtistPerMonth + yearRange added to queries. 2022 header cross-checks with 2.3 yearly table. |
+| 2026-06-12 | 4.2 | "the artists": top-25 ranked bar graphic in pure HTML/CSS (amber gradient bars scaled to #1, rank numerals, #1 highlighted), plays↔minutes toggle reuses ?metric=. Screenshot verified. |
 
 ---
 
@@ -503,7 +504,7 @@ Goal: the annual editorial page.
 
 - [x] **4.1** Year selector (only years present in the data) + year header
       with display-numeral totals (hours, plays, top artist).
-- [ ] **4.2** Ranked artist bar chart (top 25) as a designed graphic;
+- [x] **4.2** Ranked artist bar chart (top 25) as a designed graphic;
       plays ↔ minutes toggle.
 - [ ] **4.3** Ranked album and track tables (top 25 each).
 - [ ] **4.4** Monthly listening trend + top artist per month strip.
