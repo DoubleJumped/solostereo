@@ -21,8 +21,8 @@ export function fmtDate(iso: string): string {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
 }
 
-/** Minutes → compact display: "1,234 min" under ~100h, else "x,xxx h". */
+/** Minutes → compact display: "42 min" under an hour, else "1,234 h". */
 export function fmtMinutes(minutes: number): string {
-  if (minutes < 6000) return `${fmtInt(minutes)} min`;
+  if (minutes < 60) return `${fmtInt(minutes)} min`;
   return `${fmtInt(minutes / 60)} h`;
 }
