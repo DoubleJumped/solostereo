@@ -1,6 +1,7 @@
 import { OverviewEmptyState } from "@/components/overview/empty-state";
+import { ListeningHero } from "@/components/overview/listening-hero";
 import { SummaryCards } from "@/components/overview/summary-cards";
-import { getOverviewStats } from "@/lib/queries";
+import { getListeningOverTime, getOverviewStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,9 @@ export default async function OverviewPage() {
   const stats = getOverviewStats();
 
   if (stats.rawPlays === 0) return <OverviewEmptyState />;
+
+  const monthBuckets = getListeningOverTime("month");
+  const yearBuckets = getListeningOverTime("year");
 
   return (
     <div className="flex flex-col gap-10">
@@ -18,6 +22,8 @@ export default async function OverviewPage() {
       </section>
 
       <SummaryCards stats={stats} />
+
+      <ListeningHero monthBuckets={monthBuckets} yearBuckets={yearBuckets} />
     </div>
   );
 }

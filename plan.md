@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 3 — Overview page
-**Next task:** 3.3
+**Next task:** 3.4
 **Blocked on:** nothing
 
 ## Progress log
@@ -57,6 +57,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 2.G | Phase 2 gate: all views exist, 9/9 validation checks pass, sample outputs recorded above. |
 | 2026-06-12 | 3.1 | lib/queries.ts: typed read-only query layer (overview stats, listening-over-time, top artists/albums/tracks, available years) parameterized by UTC date range + plays/minutes metric. recharts installed; better-sqlite3 marked serverExternal. Smoke-tested: all-time 123,669 meaningful plays / 6,967.8 music hours / 4,642 artists. |
 | 2026-06-12 | 3.2 | Summary cards live on real data (plays/hours/artists/albums/tracks/span) as server component; empty state extracted; screenshot verified. |
+| 2026-06-12 | 3.3 | Signature hero: full-width amber area chart with custom tooltip/axes/grid per design system, month/year toggle (client component, both grains preloaded). Toggle verified in browser. |
 
 ---
 
@@ -484,7 +485,7 @@ Goal: the all-time dashboard, fully styled, on real data.
       views, parameterized by date range.
 - [x] **3.2** Summary cards row (plays, hours, unique artists/albums/tracks,
       first/last date) — designed, not default-styled.
-- [ ] **3.3** Signature hero: full-width listening-over-time area chart
+- [x] **3.3** Signature hero: full-width listening-over-time area chart
       (decade view), with month/year granularity.
 - [ ] **3.4** Top artists / albums / tracks ranking lists for the selected
       period, with the plays ↔ minutes toggle.
