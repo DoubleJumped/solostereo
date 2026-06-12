@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 1 — Historical data ingestion
-**Next task:** 1.2
+**Next task:** 1.3
 **Blocked on:** nothing
 
 ## Progress log
@@ -45,6 +45,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 0.5 | Styled placeholder Overview: hero wordmark, ghost stat-card row, ghost hero-chart empty state with import instructions. Desktop + mobile verified via screenshots; nav made scroll-safe on mobile. |
 | 2026-06-12 | 0.G | Phase 0 gate passed: fresh clone to temp dir → npm install, npm run migrate (001 applied), npm run dev → 200 on :3100. |
 | 2026-06-12 | 1.1 | Raw export (30 files) moved to data/raw/spotify/. 20-record fixture written: music incl. 30s-threshold edges + 0ms, exact-duplicate pair, podcast x2, audiobook x2, missing-field rows (null album/URI/all-metadata/booleans). |
+| 2026-06-12 | 1.2 | scripts/import.ts: glob audio+video files (or explicit dir/file arg), normalize per §5.1, sha256 dedup hash, INSERT OR IGNORE in per-file transactions, per-file logging. Fixture on scratch DB: 20 read / 19 inserted / 1 dup skipped. |
 
 ---
 
@@ -437,7 +438,7 @@ Goal: real export imported, idempotent, validated.
 - [x] **1.1** Move the raw export into `data/raw/spotify/` (gitignored).
       Create `data/fixtures/sample-history.json` with ~20 synthetic records
       covering music, podcast, audiobook, missing-field, and duplicate cases.
-- [ ] **1.2** Importer (`npm run import`): glob audio + video JSON files,
+- [x] **1.2** Importer (`npm run import`): glob audio + video JSON files,
       normalize per the section 5.1 mapping, compute dedup hash,
       `INSERT OR IGNORE`, per-file logging.
 - [ ] **1.3** Import summary report printed after every run (section 9 list).
