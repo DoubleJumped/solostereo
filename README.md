@@ -1,0 +1,96 @@
+# solostereo
+
+A personal Spotify listening archive — a local web app for exploring a decade
+of Extended Streaming History as a beautiful, browsable artifact.
+
+## Setup
+
+Requirements: Node 20+ (developed on Node 24). No Docker, no external
+services.
+
+```bash
+npm install
+npm run migrate     # creates data/solostereo.db and applies db/migrations/*.sql
+npm run dev         # http://localhost:3000
+```
+
+Copy `.env.example` to `.env.local` if you need to override defaults (the
+database path; Spotify OAuth keys are only needed for the future live
+integration).
+
+### Importing your listening history
+
+Place your Spotify **Extended Streaming History** JSON files
+(`Streaming_History_Audio_*.json` and `Streaming_History_Video_*.json`) in
+`data/raw/spotify/`, then:
+
+```bash
+npm run import      # available from Phase 1
+```
+
+The importer is idempotent — rerunning it never duplicates records (enforced
+by a database UNIQUE constraint, not importer logic). It prints a summary and
+runs `npm run validate` automatically.
+
+## Stack and rationale
+
+- **Next.js (App Router) + TypeScript**, Tailwind CSS v4 + shadcn/ui restyled
+  to the design system in [DESIGN.md](DESIGN.md).
+- **SQLite via better-sqlite3**, plain SQL migrations in `db/migrations/`.
+  Single user, ~300k rows, local-first: SQLite answers every query here in
+  single-digit milliseconds with zero network hops and zero setup. A hosted
+  Postgres was considered and rejected for v1 — remote round-trips would make
+  every dashboard load feel slow.
+- Raw imported history (`listening_events`) is kept separate from derived
+  analytics (SQL views). Raw records are never deleted or silently dropped.
+
+## Documented assumptions and tradeoffs
+
+- **UTC bucketing.** Export timestamps are UTC and all date bucketing (days,
+  months, years) is done in UTC. Late-evening local listening can land on the
+  next UTC day/year. Decided 2026-06-12; there is deliberately no timezone
+  configuration.
+- **Artists are keyed by name string.** The export contains artist names but
+  no artist URIs, so all artist-level analytics key on the name. An artist who
+  changed display name appears as two artists. Accepted for v1.
+- **`ip_addr` is deliberately dropped** at import time — privacy, and no
+  analytical value. Every other export field is preserved.
+- **Podcast and audiobook rows are preserved** in `listening_events` but
+  excluded from music analytics by the `music_listening_events` view. Nothing
+  is deleted.
+
+## Metric definitions
+
+- **Meaningful play (default play count everywhere):** a music event with
+  `ms_played >= 30000`. The export logs every skip, including 2-second
+  shuffle skips; raw event counts would pollute rankings with songs that were
+  skipped past. 30 seconds matches how Spotify itself counts a stream, so
+  totals roughly agree with Wrapped.
+- **Raw play (secondary, available as a toggle):** any imported music event.
+- **Listening time:** `ms_played / 60000` minutes (or `/ 3600000` hours),
+  summing **all** events including sub-30-second ones.
+- **Active year:** an artist is active in a year when at least one music
+  event exists for that artist in that calendar year (UTC).
+- **Rankings:** artists and albums default to listening minutes; tracks
+  default to meaningful plays. Both orderings are available.
+
+## Project layout
+
+```
+app/              Next.js App Router pages (overview, year, artists, compare)
+components/       bespoke components; components/ui/ is shadcn-generated
+db/migrations/    plain SQL migrations, applied in filename order
+lib/              shared code (db connection, query layer)
+scripts/          migrate / import / validate CLI scripts
+data/             SQLite db + raw export (gitignored — personal data)
+plan.md           project plan and single source of truth for status
+DESIGN.md         binding design system
+```
+
+## Validation
+
+`npm run validate` (from Phase 1) runs every data-quality check against the
+live database and exits non-zero on any failure — importer idempotency,
+no negative `ms_played`, yearly totals reconciling to all-time totals,
+summary views reconciling to raw events, and podcast/audiobook exclusion
+from music views. It is the mechanical definition of done for data tasks.
