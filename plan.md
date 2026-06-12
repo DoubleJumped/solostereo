@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 1 — Historical data ingestion
-**Next task:** 1.5
+**Next task:** 1.6
 **Blocked on:** nothing
 
 ## Progress log
@@ -48,6 +48,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 1.2 | scripts/import.ts: glob audio+video files (or explicit dir/file arg), normalize per §5.1, sha256 dedup hash, INSERT OR IGNORE in per-file transactions, per-file logging. Fixture on scratch DB: 20 read / 19 inserted / 1 dup skipped. |
 | 2026-06-12 | 1.3 | lib/import-summary.ts: full §9 import summary after every run (music/podcast/audiobook split, missing names, date range, hours). Fixture verified: 19 total = 15 music + 2 podcast + 2 audiobook. |
 | 2026-06-12 | 1.4 | lib/validate.ts + npm run validate: checks 1-3, 6 live; 4, 5, 7 auto-skip until Phase 2 views exist, then run for real. Importer runs validation automatically and exits non-zero on failure. Fixture DB: all checks pass. |
+| 2026-06-12 | 1.5 | Fixture x2: run1 20 read/19 inserted/1 dup; run2 0 inserted/20 dups. Real export x2: run1 29 files, 208,355 read, 208,270 inserted, 85 in-export dups; run2 0 inserted/208,355 dups, total stays 208,270. 207,622 music + 647 podcast + 1 audiobook; 2014-11-23 → 2026-06-10; 7,219.7 h. All validation passed both runs. |
 
 ---
 
@@ -446,7 +447,7 @@ Goal: real export imported, idempotent, validated.
 - [x] **1.3** Import summary report printed after every run (section 9 list).
 - [x] **1.4** `npm run validate` implementing all section 9 checks,
       exit non-zero on failure; importer runs it automatically.
-- [ ] **1.5** Run importer against the fixture **twice**; show duplicates are
+- [x] **1.5** Run importer against the fixture **twice**; show duplicates are
       skipped on the second run. Then run against the real export twice and
       record row counts in the Progress log.
 - [ ] **1.6** README: where to place JSON files, how to import, what the
