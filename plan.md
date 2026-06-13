@@ -29,9 +29,9 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** First meaningful release COMPLETE (Phases 0–6 done)
-**Next task:** Phase 7 (Live Spotify connection) — not started; optional
-**Blocked on:** nothing
+**Current phase:** Phases 0–7 COMPLETE. Phase 7 awaits owner's Spotify dev credentials to go live.
+**Next task:** Phase 8/9 candidates (optional, not committed)
+**Blocked on:** nothing (live sync needs SPOTIFY_CLIENT_ID/SECRET in .env.local)
 
 ## Progress log
 
@@ -73,6 +73,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 6.2 | Biggest rises / biggest falls (top 10 by Δ minutes, A→B trajectory shown) + prominent-in-both (shared top-25, combined time). Verified sensible: Red Clay Strays +19h discovery, Måneskin −10h fade. |
 | 2026-06-13 | 6.3 | Signature visualizations: overlaid monthly curves (2024 pale gold / 2025 amber, custom tooltip+legend) and "the shuffle" rank-change slope graph (SVG, top-10 union, risers amber/fallers gray, 11+ lane with staggered labels). Screenshot verified 2024 vs 2025. |
 | 2026-06-13 | 6.G | Phase 6 gate: production build green, 10/10 validation, all 5 route types 200. Section 12 acceptance criteria all met. **First meaningful release complete (Phases 0–6).** |
+| 2026-06-13 | 7.1-7.3 | Live Spotify sync. Migration 004 (spotify_account single-row token table). Shared lib/dedup.ts so importer + API sync hash identically (validation still 10/10 → existing rows unchanged). OAuth auth-code flow (login/callback routes, state cookie, stores stable account_id + display name). lib/spotify.ts: token refresh + incremental recently-played sync into listening_events via INSERT OR IGNORE, source_filename='spotify-api', ms_played=duration_ms, cursor=last_played_at. /sync page (status, connect, sync now, disconnect) + nav link. 7.3: profile + canonical names/URIs captured (artwork deferred to Phase 8). Build green; not-configured + error paths verified in browser. Going live needs owner's Spotify dev credentials in .env.local. |
 
 ---
 
@@ -542,10 +543,10 @@ Goal: the annual editorial page.
 
 ### Phase 7: Live Spotify connection (only after Phases 0–6 work)
 
-- [ ] **7.1** Spotify OAuth (authorization code flow), store stable `account_id`.
-- [ ] **7.2** Incremental recently-played retrieval into `listening_events`
+- [x] **7.1** Spotify OAuth (authorization code flow), store stable `account_id`.
+- [x] **7.2** Incremental recently-played retrieval into `listening_events`
       (same dedup mechanism); manual refresh action.
-- [ ] **7.3** Lightweight metadata retrieval where helpful.
+- [x] **7.3** Lightweight metadata retrieval where helpful.
 
 ### Phase 8: Enrichment and quality of life (candidates, not commitments)
 

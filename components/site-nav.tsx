@@ -10,6 +10,7 @@ const pages = [
   { href: "/year", label: "year in review" },
   { href: "/artists", label: "artists" },
   { href: "/compare", label: "compare" },
+  { href: "/sync", label: "sync" },
 ] as const;
 
 export function SiteNav() {

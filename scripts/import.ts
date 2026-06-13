@@ -10,10 +10,10 @@
  * deliberately dropped), and inserts with INSERT OR IGNORE. Idempotency is
  * guaranteed by the UNIQUE(dedup_hash) constraint, not importer logic.
  */
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { openDb } from "../lib/db";
+import { dedupHash as computeDedupHash } from "../lib/dedup";
 import { computeDbSummary, printImportSummary } from "../lib/import-summary";
 import { printValidation, runValidation } from "../lib/validate";
 
@@ -52,19 +52,18 @@ function toBool(v: boolean | null | undefined): 0 | 1 | null {
   return null;
 }
 
-/** Deterministic dedup hash per plan.md §7 (null fields as empty strings). */
+/** Deterministic dedup hash per plan.md §7, via the shared helper. */
 export function dedupHash(r: ExportRecord): string {
-  const parts = [
-    r.ts,
-    r.spotify_track_uri ?? "",
-    r.spotify_episode_uri ?? "",
-    r.audiobook_chapter_uri ?? "",
-    r.master_metadata_track_name ?? "",
-    r.master_metadata_album_artist_name ?? "",
-    r.master_metadata_album_album_name ?? "",
-    String(r.ms_played ?? 0),
-  ];
-  return crypto.createHash("sha256").update(parts.join("|")).digest("hex");
+  return computeDedupHash({
+    playedAt: r.ts,
+    trackUri: r.spotify_track_uri,
+    episodeUri: r.spotify_episode_uri,
+    chapterUri: r.audiobook_chapter_uri,
+    trackName: r.master_metadata_track_name,
+    artistName: r.master_metadata_album_artist_name,
+    albumName: r.master_metadata_album_album_name,
+    msPlayed: r.ms_played ?? 0,
+  });
 }
 
 function listSourceFiles(source: string): string[] {

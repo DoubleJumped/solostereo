@@ -50,6 +50,58 @@ counts, a summary, and runs `npm run validate` automatically:
 - `earliest / latest event, total listening hours` — quick sanity check that
   the date span and volume match what you expect.
 
+## Live Spotify sync (optional)
+
+The import is the authoritative record, but it lags by however long ago you
+last downloaded it. The **sync** page (`/sync`) keeps the archive current by
+pulling your recently played tracks straight from the Spotify Web API and
+merging them into `listening_events` with the same dedup mechanism — so the
+live sync and a future re-export can never double-count the same play.
+
+**Limitations to know first:** the Web API only exposes your **last ~50
+tracks** (there is no full-history endpoint), and it does not report how long
+each track was listened to. So: sync often enough that you don't play more
+than 50 tracks between runs, synced rows use the track's full length for
+listening time, and synced rows are tagged `source_filename = 'spotify-api'`
+so they stay distinguishable from the export. Podcasts aren't returned by this
+endpoint — they still come only from the export.
+
+### One-time setup
+
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   and **Create app** (any name/description; it can be in development mode —
+   no review needed for personal use).
+2. In the app's **Settings → Redirect URIs**, add this value **exactly**:
+
+   ```
+   http://127.0.0.1:3000/api/spotify/callback
+   ```
+
+   Spotify requires a loopback IP (`127.0.0.1`), not `localhost`, for `http`
+   redirect URIs. If you run the app on a different port, change `3000` here
+   and in `SPOTIFY_REDIRECT_URI` to match.
+3. Copy the app's **Client ID** and **Client secret** (under Settings).
+4. Create `.env.local` in the project root (copy from `.env.example`) and fill
+   in:
+
+   ```
+   SPOTIFY_CLIENT_ID=your_client_id
+   SPOTIFY_CLIENT_SECRET=your_client_secret
+   SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/spotify/callback
+   ```
+5. Restart the dev server (`npm run dev`) so it picks up the new env vars.
+
+### Connecting and syncing
+
+1. Open the app at **`http://127.0.0.1:3000`** (use `127.0.0.1`, not
+   `localhost`, so the OAuth redirect matches) and go to **sync** in the nav.
+2. Click **connect spotify**, approve the read-only access request, and you'll
+   land back on the sync page showing your account.
+3. Click **sync now** whenever you want to pull the latest plays. The result
+   line shows how many tracks were fetched, how many were new, and how many
+   were already in the archive. Tokens refresh automatically; **disconnect**
+   forgets them (your synced rows stay).
+
 ## Stack and rationale
 
 - **Next.js (App Router) + TypeScript**, Tailwind CSS v4 + shadcn/ui restyled
