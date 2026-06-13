@@ -415,6 +415,53 @@ export function getArtistYearDeltas(
     .all(yearA, yearB) as ArtistYearDelta[];
 }
 
+export interface YearArtistTrack {
+  trackName: string;
+  meaningfulPlays: number;
+  listeningMinutes: number;
+}
+
+/**
+ * For one year, each artist's top tracks that year (default 4 per artist),
+ * keyed by artist name. Powers the hover detail on the year page's artist
+ * ranking.
+ */
+export function getYearArtistTopTracks(
+  year: number,
+  perArtist = 4,
+): Map<string, YearArtistTrack[]> {
+  const rows = db()
+    .prepare(
+      `SELECT artist_name AS artistName, track_name AS trackName,
+              meaningful_plays AS meaningfulPlays,
+              listening_minutes AS listeningMinutes
+       FROM (
+         SELECT artist_name, track_name, meaningful_plays, listening_minutes,
+                ROW_NUMBER() OVER (
+                  PARTITION BY artist_name
+                  ORDER BY meaningful_plays DESC, total_ms_played DESC
+                ) AS rn
+         FROM track_year_summary
+         WHERE year = ?
+       )
+       WHERE rn <= ?
+       ORDER BY artist_name, meaningfulPlays DESC`,
+    )
+    .all(year, perArtist) as (YearArtistTrack & { artistName: string })[];
+
+  const map = new Map<string, YearArtistTrack[]>();
+  for (const r of rows) {
+    const list = map.get(r.artistName) ?? [];
+    list.push({
+      trackName: r.trackName,
+      meaningfulPlays: r.meaningfulPlays,
+      listeningMinutes: r.listeningMinutes,
+    });
+    map.set(r.artistName, list);
+  }
+  return map;
+}
+
 /** Years present in the data, descending — drives year selectors. */
 export function getAvailableYears(): number[] {
   return (

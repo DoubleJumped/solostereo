@@ -7,25 +7,28 @@ never like a BI dashboard.
 ## Palette — dark only
 
 The app has one permanent dark theme; tokens live in `:root` in
-`app/globals.css` as oklch values with a warm hue (~80°) so the near-black
-never reads as cold blue-gray.
+`app/globals.css` as oklch values. The canvas is a neutral near-black and the
+one accent is a Spotify-leaning green (this app sits on top of Spotify data).
 
 | Token | Value | Use |
 |---|---|---|
-| `--background` | `oklch(0.16 0.008 80)` | near-black warm canvas |
-| `--foreground` | `oklch(0.93 0.014 85)` | warm off-white text |
-| `--primary` | `oklch(0.78 0.145 70)` | **the one accent — amber** ("amp glow"). Active nav, key data, the wordmark dot |
-| `--muted-foreground` | `oklch(0.66 0.018 80)` | secondary text, axis labels |
-| `--card` | `oklch(0.20 0.009 80)` | elevated surfaces |
-| `--border` | foreground at 10% | hairlines |
-| `--chart-1…5` | amber, pale gold, rust, warm gray, deep warm gray | chart series, in that priority order |
+| `--background` | `oklch(0.15 0 0)` | near-black neutral canvas |
+| `--foreground` | `oklch(0.96 0 0)` | off-white text |
+| `--primary` | `oklch(0.74 0.18 150)` | **the one accent — green**. Active nav, key data, the wordmark dot |
+| `--muted-foreground` | `oklch(0.64 0 0)` | secondary text, axis labels |
+| `--card` | `oklch(0.19 0 0)` | surfaces — kept *just* above the canvas so panels feel light, not boxed |
+| `--border` | foreground at 8% | faint hairlines |
+| `--chart-1…5` | green, light gray, teal, gray, deep gray | chart series, in that priority order |
 
 Rules:
 
-- Amber is the only saturated color. The data is the color; the chrome stays
+- Green is the only saturated color. The data is the color; the chrome stays
   quiet. Never introduce a second accent for emphasis — use weight, size, or
-  the pale-gold/rust chart shades.
+  the gray/teal chart shades. In two-series views (compare), the secondary
+  series uses light gray (chart-2) so green reads as "the subject."
 - Use `--chart-*` for chart series; never library default palettes.
+- Keep surfaces light: cards sit barely above the canvas with faint hairlines.
+  Prefer open, hairline-separated layouts over heavily bordered boxes.
 
 ## Typography
 

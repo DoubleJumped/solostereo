@@ -13,6 +13,7 @@ import {
   getTopArtistPerMonth,
   getTopArtists,
   getTopTracks,
+  getYearArtistTopTracks,
   yearRange,
   type RankMetric,
 } from "@/lib/queries";
@@ -48,6 +49,7 @@ export default async function YearInReviewPage({
   const stats = getOverviewStats(range);
   const topArtist = getTopArtists(range, "minutes", 1)[0];
   const top25 = getTopArtists(range, artistMetric, 25);
+  const artistTopTracks = getYearArtistTopTracks(year);
   const albumMetric = forced ?? "minutes";
   const trackMetric = forced ?? "plays";
   const topAlbums = getTopAlbums(range, albumMetric, 25);
@@ -76,11 +78,11 @@ export default async function YearInReviewPage({
       />
 
       {/* editorial Wrapped-style header (task 4.1) */}
-      <header className="flex flex-col gap-6 border-b border-border pb-10 lg:flex-row lg:items-end lg:justify-between">
-        <h1 className="stat-numeral text-[7rem] leading-[0.85] text-primary sm:text-[10rem]">
+      <header className="flex flex-col gap-6 border-b border-border pb-8 lg:flex-row lg:items-end lg:justify-between">
+        <h1 className="stat-numeral text-6xl leading-none text-primary sm:text-7xl">
           {year}
         </h1>
-        <dl className="grid grid-cols-3 gap-8 lg:pb-3">
+        <dl className="grid grid-cols-3 gap-8 lg:pb-2">
           <div>
             <dd className="stat-numeral text-4xl sm:text-5xl">
               {fmtInt(stats.listeningHours)}
@@ -116,7 +118,14 @@ export default async function YearInReviewPage({
           </h2>
           <MetricToggle />
         </div>
-        <ArtistBars rows={top25} metric={artistMetric} />
+        <p className="-mt-3 text-xs lowercase tracking-wide text-muted-foreground">
+          hover an artist for their top songs that year
+        </p>
+        <ArtistBars
+          rows={top25}
+          metric={artistMetric}
+          topTracksByArtist={artistTopTracks}
+        />
       </section>
 
       <MonthlyStrip months={months} />

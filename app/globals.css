@@ -51,48 +51,49 @@
 
 /*
  * solostereo palette — single permanent dark theme.
- * Warm near-black canvas, warm off-white text, one amber accent.
- * The data is the color; the chrome stays quiet.
+ * Neutral near-black canvas, off-white text, one green accent (Spotify-leaning).
+ * The data is the color; the chrome stays quiet. Cards sit only just above the
+ * canvas with faint hairlines, so surfaces feel light rather than boxed.
  */
 :root {
-  --background: oklch(0.16 0.008 80);          /* near-black, warm */
-  --foreground: oklch(0.93 0.014 85);          /* warm off-white */
-  --card: oklch(0.2 0.009 80);
-  --card-foreground: oklch(0.93 0.014 85);
-  --popover: oklch(0.21 0.009 80);
-  --popover-foreground: oklch(0.93 0.014 85);
-  --primary: oklch(0.78 0.145 70);             /* amber — the one accent */
-  --primary-foreground: oklch(0.16 0.008 80);
-  --secondary: oklch(0.26 0.01 80);
-  --secondary-foreground: oklch(0.93 0.014 85);
-  --muted: oklch(0.23 0.009 80);
-  --muted-foreground: oklch(0.66 0.018 80);
-  --accent: oklch(0.26 0.01 80);
-  --accent-foreground: oklch(0.93 0.014 85);
+  --background: oklch(0.15 0 0);               /* near-black, neutral */
+  --foreground: oklch(0.96 0 0);               /* off-white */
+  --card: oklch(0.19 0 0);                     /* barely lifted off the canvas */
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.2 0 0);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.74 0.18 150);             /* green — the one accent */
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.25 0 0);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.64 0 0);
+  --accent: oklch(0.25 0 0);
+  --accent-foreground: oklch(0.96 0 0);
   --destructive: oklch(0.62 0.19 28);
-  --border: oklch(0.93 0.014 85 / 10%);
-  --input: oklch(0.93 0.014 85 / 14%);
-  --ring: oklch(0.78 0.145 70 / 55%);
-  --chart-1: oklch(0.78 0.145 70);             /* amber */
-  --chart-2: oklch(0.88 0.06 85);              /* pale gold */
-  --chart-3: oklch(0.6 0.1 50);                /* rust */
-  --chart-4: oklch(0.55 0.02 80);              /* warm gray */
-  --chart-5: oklch(0.4 0.012 80);              /* deep warm gray */
+  --border: oklch(0.96 0 0 / 8%);              /* fainter hairlines */
+  --input: oklch(0.96 0 0 / 12%);
+  --ring: oklch(0.74 0.18 150 / 55%);
+  --chart-1: oklch(0.74 0.18 150);             /* green */
+  --chart-2: oklch(0.82 0.015 160);            /* light gray — secondary series */
+  --chart-3: oklch(0.7 0.13 165);              /* teal */
+  --chart-4: oklch(0.52 0.01 160);             /* gray */
+  --chart-5: oklch(0.38 0.01 160);             /* deep gray */
   --radius: 0.5rem;
-  --sidebar: oklch(0.19 0.009 80);
-  --sidebar-foreground: oklch(0.93 0.014 85);
-  --sidebar-primary: oklch(0.78 0.145 70);
-  --sidebar-primary-foreground: oklch(0.16 0.008 80);
-  --sidebar-accent: oklch(0.26 0.01 80);
-  --sidebar-accent-foreground: oklch(0.93 0.014 85);
-  --sidebar-border: oklch(0.93 0.014 85 / 10%);
-  --sidebar-ring: oklch(0.78 0.145 70 / 55%);
+  --sidebar: oklch(0.17 0 0);
+  --sidebar-foreground: oklch(0.96 0 0);
+  --sidebar-primary: oklch(0.74 0.18 150);
+  --sidebar-primary-foreground: oklch(0.15 0 0);
+  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.96 0 0 / 8%);
+  --sidebar-ring: oklch(0.74 0.18 150 / 55%);
 }
 
 /* The app is dark-only; .dark exists for shadcn variant compatibility. */
 .dark {
-  --background: oklch(0.16 0.008 80);
-  --foreground: oklch(0.93 0.014 85);
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.96 0 0);
 }
 
 @layer base {
