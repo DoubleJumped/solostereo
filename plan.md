@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 5 — Artist explorer
-**Next task:** 5.1
+**Next task:** 5.2
 **Blocked on:** nothing
 
 ## Progress log
@@ -65,6 +65,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 4.2 | "the artists": top-25 ranked bar graphic in pure HTML/CSS (amber gradient bars scaled to #1, rank numerals, #1 highlighted), plays↔minutes toggle reuses ?metric=. Screenshot verified. |
 | 2026-06-12 | 4.3+4.4 | "the albums"/"the tracks" dense top-25 tables (ranking column amber-highlighted per metric); "the months" strip — 12 zero-filled bars with peak month amber + top artist per month. Peak logic verified numerically (jun 70h, 2022). |
 | 2026-06-12 | 4.G | Phase 4 gate: lint/build/validation green, screenshots verified. Year in review complete. |
+| 2026-06-12 | 5.1 | /artists: full §6 column table (plays, time, first/last played, tracks, active years, top year, most-played track) over getArtistTable() with window-fn joins; instant client search + sort on every numeric/date column, 100-row paging. Verified: first-played asc = Eminem nov 23 2014 (first export event). |
 
 ---
 
@@ -514,7 +515,7 @@ Goal: the annual editorial page.
 
 ### Phase 5: Artist explorer
 
-- [ ] **5.1** Artist table: all section 6 columns, sortable on every numeric
+- [x] **5.1** Artist table: all section 6 columns, sortable on every numeric
       and date column, instant search.
 - [ ] **5.2** Artist detail page: listening by year (signature timeline) and
       by month, top albums, top tracks, summary stats.

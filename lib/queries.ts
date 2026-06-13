@@ -226,6 +226,161 @@ export function getTopArtistPerMonth(year: number): MonthTopArtist[] {
     .all(String(year)) as MonthTopArtist[];
 }
 
+export interface ArtistTableRow {
+  artistName: string;
+  meaningfulPlays: number;
+  rawPlays: number;
+  listeningMinutes: number;
+  firstPlayedAt: string;
+  lastPlayedAt: string;
+  distinctTracks: number;
+  activeYears: number;
+  topYear: number;
+  topTrack: string | null;
+}
+
+/** Every artist with the full §6 column set, for the explorer table. */
+export function getArtistTable(): ArtistTableRow[] {
+  return db()
+    .prepare(
+      `SELECT s.artist_name              AS artistName,
+              s.meaningful_plays         AS meaningfulPlays,
+              s.raw_plays                AS rawPlays,
+              s.listening_minutes        AS listeningMinutes,
+              s.first_played_at          AS firstPlayedAt,
+              s.last_played_at           AS lastPlayedAt,
+              s.distinct_tracks          AS distinctTracks,
+              y.active_years             AS activeYears,
+              y.top_year                 AS topYear,
+              t.top_track                AS topTrack
+       FROM artist_summary s
+       LEFT JOIN (
+         SELECT artist_name,
+                COUNT(DISTINCT year) AS active_years,
+                MAX(CASE WHEN rn = 1 THEN year END) AS top_year
+         FROM (
+           SELECT artist_name, year,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY artist_name ORDER BY total_ms_played DESC
+                  ) AS rn
+           FROM artist_year_summary
+         )
+         GROUP BY artist_name
+       ) y ON y.artist_name = s.artist_name
+       LEFT JOIN (
+         SELECT artist_name, track_name AS top_track
+         FROM (
+           SELECT artist_name, track_name,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY artist_name
+                    ORDER BY meaningful_plays DESC, total_ms_played DESC
+                  ) AS rn
+           FROM track_summary
+         )
+         WHERE rn = 1
+       ) t ON t.artist_name = s.artist_name
+       ORDER BY s.listening_minutes DESC`,
+    )
+    .all() as ArtistTableRow[];
+}
+
+export interface ArtistYearBucket {
+  year: number;
+  listeningMinutes: number;
+  meaningfulPlays: number;
+}
+
+/** One artist's listening by calendar year (the relationship arc). */
+export function getArtistYears(artistName: string): ArtistYearBucket[] {
+  return db()
+    .prepare(
+      `SELECT year,
+              listening_minutes AS listeningMinutes,
+              meaningful_plays  AS meaningfulPlays
+       FROM artist_year_summary
+       WHERE artist_name = ?
+       ORDER BY year`,
+    )
+    .all(artistName) as ArtistYearBucket[];
+}
+
+/** One artist's listening by month across their whole history. */
+export function getArtistMonths(artistName: string): TimeBucket[] {
+  return db()
+    .prepare(
+      `SELECT strftime('%Y-%m', played_at)  AS bucket,
+              SUM(ms_played) / 60000.0      AS listeningMinutes,
+              SUM(ms_played >= 30000)       AS meaningfulPlays
+       FROM music_listening_events
+       WHERE artist_name = ?
+       GROUP BY bucket
+       ORDER BY bucket`,
+    )
+    .all(artistName) as TimeBucket[];
+}
+
+export interface ArtistSummaryRow {
+  artistName: string;
+  meaningfulPlays: number;
+  rawPlays: number;
+  listeningMinutes: number;
+  firstPlayedAt: string;
+  lastPlayedAt: string;
+  distinctTracks: number;
+}
+
+export function getArtistSummary(artistName: string): ArtistSummaryRow | null {
+  return (
+    (db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                meaningful_plays  AS meaningfulPlays,
+                raw_plays         AS rawPlays,
+                listening_minutes AS listeningMinutes,
+                first_played_at   AS firstPlayedAt,
+                last_played_at    AS lastPlayedAt,
+                distinct_tracks   AS distinctTracks
+         FROM artist_summary
+         WHERE artist_name = ?`,
+      )
+      .get(artistName) as ArtistSummaryRow | undefined) ?? null
+  );
+}
+
+/** Top albums for one artist (by listening time). */
+export function getArtistAlbums(artistName: string, limit = 10): RankedAlbum[] {
+  return db()
+    .prepare(
+      `SELECT artist_name       AS artistName,
+              album_name        AS albumName,
+              meaningful_plays  AS meaningfulPlays,
+              raw_plays         AS rawPlays,
+              listening_minutes AS listeningMinutes
+       FROM album_summary
+       WHERE artist_name = ?
+       ORDER BY total_ms_played DESC
+       LIMIT ?`,
+    )
+    .all(artistName, limit) as RankedAlbum[];
+}
+
+/** Top tracks for one artist (by meaningful plays). */
+export function getArtistTracks(artistName: string, limit = 10): RankedTrack[] {
+  return db()
+    .prepare(
+      `SELECT artist_name       AS artistName,
+              track_name        AS trackName,
+              meaningful_plays  AS meaningfulPlays,
+              raw_plays         AS rawPlays,
+              listening_minutes AS listeningMinutes
+       FROM track_summary
+       WHERE artist_name = ?
+       ORDER BY meaningful_plays DESC, total_ms_played DESC
+       LIMIT ?`,
+    )
+    .all(artistName, limit) as RankedTrack[];
+}
+
 /** Years present in the data, descending — drives year selectors. */
 export function getAvailableYears(): number[] {
   return (
