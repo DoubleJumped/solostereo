@@ -381,6 +381,40 @@ export function getArtistTracks(artistName: string, limit = 10): RankedTrack[] {
     .all(artistName, limit) as RankedTrack[];
 }
 
+export interface ArtistYearDelta {
+  artistName: string;
+  minutesA: number;
+  minutesB: number;
+  playsA: number;
+  playsB: number;
+  deltaMinutes: number;
+}
+
+/**
+ * Every artist active in either of two years, with listening totals for both
+ * and the delta (B − A). Drives the rises/falls and prominent-in-both lists.
+ */
+export function getArtistYearDeltas(
+  yearA: number,
+  yearB: number,
+): ArtistYearDelta[] {
+  return db()
+    .prepare(
+      `SELECT COALESCE(a.artist_name, b.artist_name)  AS artistName,
+              IFNULL(a.listening_minutes, 0)          AS minutesA,
+              IFNULL(b.listening_minutes, 0)          AS minutesB,
+              IFNULL(a.meaningful_plays, 0)           AS playsA,
+              IFNULL(b.meaningful_plays, 0)           AS playsB,
+              IFNULL(b.listening_minutes, 0) - IFNULL(a.listening_minutes, 0)
+                                                      AS deltaMinutes
+       FROM (SELECT * FROM artist_year_summary WHERE year = ?) a
+       FULL OUTER JOIN (SELECT * FROM artist_year_summary WHERE year = ?) b
+         ON a.artist_name = b.artist_name
+       ORDER BY deltaMinutes DESC`,
+    )
+    .all(yearA, yearB) as ArtistYearDelta[];
+}
+
 /** Years present in the data, descending — drives year selectors. */
 export function getAvailableYears(): number[] {
   return (
