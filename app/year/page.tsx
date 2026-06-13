@@ -1,12 +1,18 @@
 import { MetricToggle } from "@/components/metric-toggle";
 import { PageStub } from "@/components/page-stub";
 import { ArtistBars } from "@/components/year/artist-bars";
+import { MonthlyStrip, type MonthCell } from "@/components/year/monthly-strip";
+import { TopTable } from "@/components/year/top-table";
 import { YearSelector } from "@/components/year/year-selector";
 import { fmtInt } from "@/lib/format";
 import {
   getAvailableYears,
+  getListeningOverTime,
   getOverviewStats,
+  getTopAlbums,
+  getTopArtistPerMonth,
   getTopArtists,
+  getTopTracks,
   yearRange,
   type RankMetric,
 } from "@/lib/queries";
@@ -42,6 +48,24 @@ export default async function YearInReviewPage({
   const stats = getOverviewStats(range);
   const topArtist = getTopArtists(range, "minutes", 1)[0];
   const top25 = getTopArtists(range, artistMetric, 25);
+  const albumMetric = forced ?? "minutes";
+  const trackMetric = forced ?? "plays";
+  const topAlbums = getTopAlbums(range, albumMetric, 25);
+  const topTracks = getTopTracks(range, trackMetric, 25);
+
+  // monthly trend + top artist per month (task 4.4), zero-filled Jan–Dec
+  const monthBuckets = getListeningOverTime("month", range);
+  const monthArtists = getTopArtistPerMonth(year);
+  const months: MonthCell[] = Array.from({ length: 12 }, (_, i) => {
+    const key = `${year}-${String(i + 1).padStart(2, "0")}`;
+    const bucket = monthBuckets.find((b) => b.bucket === key);
+    const top = monthArtists.find((a) => Number(a.month) === i + 1);
+    return {
+      month: i + 1,
+      hours: (bucket?.listeningMinutes ?? 0) / 60,
+      topArtist: top?.artistName,
+    };
+  });
 
   return (
     <div className="flex flex-col gap-10">
@@ -93,6 +117,32 @@ export default async function YearInReviewPage({
           <MetricToggle />
         </div>
         <ArtistBars rows={top25} metric={artistMetric} />
+      </section>
+
+      <MonthlyStrip months={months} />
+
+      {/* ranked album + track tables (task 4.3) */}
+      <section className="grid gap-10 lg:grid-cols-2">
+        <TopTable
+          title="the albums"
+          metric={albumMetric}
+          rows={topAlbums.map((a) => ({
+            name: a.albumName,
+            artist: a.artistName,
+            meaningfulPlays: a.meaningfulPlays,
+            listeningMinutes: a.listeningMinutes,
+          }))}
+        />
+        <TopTable
+          title="the tracks"
+          metric={trackMetric}
+          rows={topTracks.map((t) => ({
+            name: t.trackName,
+            artist: t.artistName,
+            meaningfulPlays: t.meaningfulPlays,
+            listeningMinutes: t.listeningMinutes,
+          }))}
+        />
       </section>
     </div>
   );

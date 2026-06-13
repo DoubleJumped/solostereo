@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 4 — Year in review
-**Next task:** 4.3
+**Next task:** 4.G
 **Blocked on:** nothing
 
 ## Progress log
@@ -63,6 +63,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 3.G | Phase 3 gate: lint clean, production build green, 9/9 validation, desktop+mobile screenshots verified. Overview complete on real data. |
 | 2026-06-12 | 4.1 | /year: year chips (2014–2026 from data), editorial header — giant amber Fraunces year numeral + hours/plays/top-artist display stats. getTopArtistPerMonth + yearRange added to queries. 2022 header cross-checks with 2.3 yearly table. |
 | 2026-06-12 | 4.2 | "the artists": top-25 ranked bar graphic in pure HTML/CSS (amber gradient bars scaled to #1, rank numerals, #1 highlighted), plays↔minutes toggle reuses ?metric=. Screenshot verified. |
+| 2026-06-12 | 4.3+4.4 | "the albums"/"the tracks" dense top-25 tables (ranking column amber-highlighted per metric); "the months" strip — 12 zero-filled bars with peak month amber + top artist per month. Peak logic verified numerically (jun 70h, 2022). |
 
 ---
 
@@ -506,8 +507,8 @@ Goal: the annual editorial page.
       with display-numeral totals (hours, plays, top artist).
 - [x] **4.2** Ranked artist bar chart (top 25) as a designed graphic;
       plays ↔ minutes toggle.
-- [ ] **4.3** Ranked album and track tables (top 25 each).
-- [ ] **4.4** Monthly listening trend + top artist per month strip.
+- [x] **4.3** Ranked album and track tables (top 25 each).
+- [x] **4.4** Monthly listening trend + top artist per month strip.
 - [ ] **4.G** Phase gate: screenshots, validation, stop.
 
 ### Phase 5: Artist explorer
