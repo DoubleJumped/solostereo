@@ -29,8 +29,8 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phase 6 — Compare years
-**Next task:** 6.G
+**Current phase:** First meaningful release COMPLETE (Phases 0–6 done)
+**Next task:** Phase 7 (Live Spotify connection) — not started; optional
 **Blocked on:** nothing
 
 ## Progress log
@@ -72,6 +72,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 6.1 | /compare: two-year selects (?a=&b=), annual totals cards (year A pale gold / year B amber), side-by-side top 25, entered/left top-25 lists with rank context. getArtistYearDeltas (FULL OUTER JOIN) added. Screenshot verified 2024 vs 2025. |
 | 2026-06-12 | 6.2 | Biggest rises / biggest falls (top 10 by Δ minutes, A→B trajectory shown) + prominent-in-both (shared top-25, combined time). Verified sensible: Red Clay Strays +19h discovery, Måneskin −10h fade. |
 | 2026-06-13 | 6.3 | Signature visualizations: overlaid monthly curves (2024 pale gold / 2025 amber, custom tooltip+legend) and "the shuffle" rank-change slope graph (SVG, top-10 union, risers amber/fallers gray, 11+ lane with staggered labels). Screenshot verified 2024 vs 2025. |
+| 2026-06-13 | 6.G | Phase 6 gate: production build green, 10/10 validation, all 5 route types 200. Section 12 acceptance criteria all met. **First meaningful release complete (Phases 0–6).** |
 
 ---
 
@@ -536,7 +537,7 @@ Goal: the annual editorial page.
 - [x] **6.2** Largest increases/decreases in listening; prominent-in-both list.
 - [x] **6.3** Signature visualization: overlaid monthly curves + rank-change
       slope graph.
-- [ ] **6.G** Phase gate: screenshots, validation, stop. **First meaningful
+- [x] **6.G** Phase gate: screenshots, validation, stop. **First meaningful
       release complete — check section 12 acceptance criteria.**
 
 ### Phase 7: Live Spotify connection (only after Phases 0–6 work)
