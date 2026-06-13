@@ -1,4 +1,9 @@
 import { DeltaList } from "@/components/compare/delta-list";
+import {
+  MonthlyOverlay,
+  type OverlayPoint,
+} from "@/components/compare/monthly-overlay";
+import { SlopeGraph } from "@/components/compare/slope-graph";
 import { YearPairSelector } from "@/components/compare/year-pair-selector";
 import { PageStub } from "@/components/page-stub";
 import { RankingList } from "@/components/ranking-list";
@@ -6,6 +11,7 @@ import { fmtInt, fmtMinutes } from "@/lib/format";
 import {
   getArtistYearDeltas,
   getAvailableYears,
+  getListeningOverTime,
   getOverviewStats,
   getTopArtists,
   yearRange,
@@ -56,6 +62,20 @@ export default async function CompareYearsPage({
     .filter((d) => namesA.has(d.artistName) && namesB.has(d.artistName))
     .sort((x, y) => y.minutesA + y.minutesB - (x.minutesA + x.minutesB))
     .slice(0, 10);
+
+  // overlaid monthly curves (task 6.3)
+  const monthsA = getListeningOverTime("month", yearRange(a));
+  const monthsB = getListeningOverTime("month", yearRange(b));
+  const overlay: OverlayPoint[] = Array.from({ length: 12 }, (_, i) => {
+    const mm = String(i + 1).padStart(2, "0");
+    const ma = monthsA.find((x) => x.bucket === `${a}-${mm}`);
+    const mb = monthsB.find((x) => x.bucket === `${b}-${mm}`);
+    return {
+      month: i + 1,
+      hoursA: (ma?.listeningMinutes ?? 0) / 60,
+      hoursB: (mb?.listeningMinutes ?? 0) / 60,
+    };
+  });
 
   return (
     <div className="flex flex-col gap-10">
@@ -111,6 +131,10 @@ export default async function CompareYearsPage({
           </div>
         ))}
       </section>
+
+      {/* signature visualizations (task 6.3) */}
+      <MonthlyOverlay points={overlay} yearA={a} yearB={b} />
+      <SlopeGraph topA={topA} topB={topB} yearA={a} yearB={b} />
 
       {/* side-by-side top 25 (task 6.1) */}
       <section className="grid gap-6 lg:grid-cols-2">
