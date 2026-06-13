@@ -29,9 +29,10 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phases 0–7 COMPLETE. Phase 7 awaits owner's Spotify dev credentials to go live.
+**Current phase:** Phases 0–7 COMPLETE and live. Spotify connected; every-12h
+Windows scheduled task ("solostereo-sync") keeping the archive current.
 **Next task:** Phase 8/9 candidates (optional, not committed)
-**Blocked on:** nothing (live sync needs SPOTIFY_CLIENT_ID/SECRET in .env.local)
+**Blocked on:** nothing
 
 ## Progress log
 
