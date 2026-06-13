@@ -30,7 +30,7 @@ script exists, Phase 1 onward).
 ## Status
 
 **Current phase:** Phase 5 — Artist explorer
-**Next task:** 5.3
+**Next task:** 5.G
 **Blocked on:** nothing
 
 ## Progress log
@@ -67,6 +67,7 @@ script exists, Phase 1 onward).
 | 2026-06-12 | 4.G | Phase 4 gate: lint/build/validation green, screenshots verified. Year in review complete. |
 | 2026-06-12 | 5.1 | /artists: full §6 column table (plays, time, first/last played, tracks, active years, top year, most-played track) over getArtistTable() with window-fn joins; instant client search + sort on every numeric/date column, 100-row paging. Verified: first-played asc = Eminem nov 23 2014 (first export event). |
 | 2026-06-12 | 5.2 | /artists/[artist]: editorial header + 5 summary stats, "the arc" year timeline (gaps rendered, peak amber), monthly area chart in house style, top albums/tracks. Verified on City and Colour (1,551 plays / 95 h / 2023 peak). |
+| 2026-06-12 | 5.3 | Validate check 8 added: top-3 artists' summary rows recomputed from listening_events with inline predicates (no views) — RHCP, Arkells, Post Malone all reconcile. 10 checks total, all green. |
 
 ---
 
@@ -520,7 +521,7 @@ Goal: the annual editorial page.
       and date column, instant search.
 - [x] **5.2** Artist detail page: listening by year (signature timeline) and
       by month, top albums, top tracks, summary stats.
-- [ ] **5.3** Validation: spot-check three artists — detail page totals
+- [x] **5.3** Validation: spot-check three artists — detail page totals
       reconcile to raw event queries; add as a validate check if practical.
 - [ ] **5.G** Phase gate: screenshots, validation, stop.
 

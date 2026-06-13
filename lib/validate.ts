@@ -225,6 +225,51 @@ export function runValidation(db: Database.Database): CheckResult[] {
     });
   }
 
+  // 8. Spot-check (task 5.3): the top-3 artists' summary rows reconcile to
+  // totals recomputed directly from listening_events with inline predicates
+  // (no views involved).
+  if (viewExists(db, "artist_summary")) {
+    const top3 = db
+      .prepare(
+        `SELECT artist_name, meaningful_plays, raw_plays, total_ms_played
+         FROM artist_summary ORDER BY total_ms_played DESC LIMIT 3`,
+      )
+      .all() as {
+      artist_name: string;
+      meaningful_plays: number;
+      raw_plays: number;
+      total_ms_played: number;
+    }[];
+    const mismatches: string[] = [];
+    for (const a of top3) {
+      const raw = db
+        .prepare(
+          `SELECT SUM(ms_played >= 30000) AS mp, COUNT(*) AS rp, SUM(ms_played) AS ms
+           FROM listening_events
+           WHERE artist_name = ?
+             AND spotify_episode_uri IS NULL AND episode_name IS NULL
+             AND audiobook_uri IS NULL AND audiobook_chapter_uri IS NULL
+             AND audiobook_title IS NULL`,
+        )
+        .get(a.artist_name) as { mp: number; rp: number; ms: number };
+      if (
+        raw.mp !== a.meaningful_plays ||
+        raw.rp !== a.raw_plays ||
+        raw.ms !== a.total_ms_played
+      ) {
+        mismatches.push(a.artist_name);
+      }
+    }
+    results.push({
+      name: "8 top-3 artist detail totals reconcile to raw events",
+      status: mismatches.length === 0 ? "pass" : "fail",
+      detail:
+        mismatches.length === 0
+          ? `checked: ${top3.map((a) => a.artist_name).join(", ")}`
+          : `mismatch: ${mismatches.join(", ")}`,
+    });
+  }
+
   return results;
 }
 
