@@ -1,3 +1,4 @@
+import { DeltaList } from "@/components/compare/delta-list";
 import { YearPairSelector } from "@/components/compare/year-pair-selector";
 import { PageStub } from "@/components/page-stub";
 import { RankingList } from "@/components/ranking-list";
@@ -43,6 +44,18 @@ export default async function CompareYearsPage({
   const namesB = new Set(topB.map((r) => r.artistName));
   const entered = topB.filter((r) => !namesA.has(r.artistName));
   const left = topA.filter((r) => !namesB.has(r.artistName));
+
+  // rises / falls / prominent in both (task 6.2)
+  const deltas = getArtistYearDeltas(a, b);
+  const rises = deltas.filter((d) => d.deltaMinutes > 0).slice(0, 10);
+  const falls = deltas
+    .filter((d) => d.deltaMinutes < 0)
+    .sort((x, y) => x.deltaMinutes - y.deltaMinutes)
+    .slice(0, 10);
+  const prominentBoth = deltas
+    .filter((d) => namesA.has(d.artistName) && namesB.has(d.artistName))
+    .sort((x, y) => y.minutesA + y.minutesB - (x.minutesA + x.minutesB))
+    .slice(0, 10);
 
   return (
     <div className="flex flex-col gap-10">
@@ -137,6 +150,31 @@ export default async function CompareYearsPage({
             name: r.artistName,
             value: fmtMinutes(r.listeningMinutes),
             subValue: `#${topA.findIndex((x) => x.artistName === r.artistName) + 1} in ${a}`,
+          }))}
+        />
+      </section>
+
+      {/* movement between the years (task 6.2) */}
+      <section className="grid gap-6 lg:grid-cols-3">
+        <DeltaList
+          title="biggest rises"
+          direction="up"
+          rows={rises}
+          emptyMessage={`nothing grew from ${a} to ${b}`}
+        />
+        <DeltaList
+          title="biggest falls"
+          direction="down"
+          rows={falls}
+          emptyMessage={`nothing faded from ${a} to ${b}`}
+        />
+        <RankingList
+          title="prominent in both"
+          emptyMessage="no shared top-25 artists"
+          rows={prominentBoth.map((d) => ({
+            name: d.artistName,
+            value: fmtMinutes(d.minutesA + d.minutesB),
+            subValue: `${fmtMinutes(d.minutesA)} + ${fmtMinutes(d.minutesB)}`,
           }))}
         />
       </section>
