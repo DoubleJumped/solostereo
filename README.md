@@ -102,6 +102,33 @@ endpoint — they still come only from the export.
    were already in the archive. Tokens refresh automatically; **disconnect**
    forgets them (your synced rows stay).
 
+### Automatic syncs (headless)
+
+After the one-time connect, `npm run sync` runs the same sync from the command
+line with no browser — it reuses the stored refresh token. Because the
+database and tokens live on this machine, schedule it with a **local**
+scheduler (Windows Task Scheduler), not a cloud cron — a cloud job can't reach
+your local DB.
+
+Schedule `scripts\sync.cmd` (it cd's to the project, runs the sync, and appends
+to `data\sync.log`). Run it **more often than once a day** — the API only keeps
+your last ~50 tracks, so on a heavy listening day a daily sync can still miss
+plays. Every 6 hours is a safe, cheap cadence (one API call per run). Example,
+registering an every-6-hours task:
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute "C:\CursorFiles\SoloStereo\scripts\sync.cmd"
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
+             -RepetitionInterval (New-TimeSpan -Hours 6)
+Register-ScheduledTask -TaskName "solostereo-sync" -Action $action -Trigger $trigger `
+  -Description "Sync recent Spotify plays into solostereo"
+```
+
+Remove it later with `Unregister-ScheduledTask -TaskName "solostereo-sync"`.
+Any gap larger than the ~50-track window can only be backfilled by
+re-requesting the Extended Streaming History export and re-importing (the
+dedup hash merges it with synced rows, no duplicates).
+
 ## Stack and rationale
 
 - **Next.js (App Router) + TypeScript**, Tailwind CSS v4 + shadcn/ui restyled
