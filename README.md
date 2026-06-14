@@ -110,21 +110,29 @@ database and tokens live on this machine, schedule it with a **local**
 scheduler (Windows Task Scheduler), not a cloud cron — a cloud job can't reach
 your local DB.
 
-Schedule `scripts\sync.cmd` (it cd's to the project, runs the sync, and appends
-to `data\sync.log`). Run it **more often than once a day** — the API only keeps
-your last ~50 tracks, so on a heavy listening day a daily sync can still miss
-plays. Every 6 hours is a safe, cheap cadence (one API call per run). Example,
-registering an every-6-hours task:
+Schedule **`scripts\sync-hidden.vbs`** via `wscript.exe` — it launches the sync
+with no visible window, so a scheduled run never pops a console or steals focus
+from a fullscreen app/game. (`scripts\sync.cmd` does the same thing but shows a
+console window; use it for manual runs, not the scheduler.) Both cd to the
+project, run the sync, and append to `data\sync.log`.
+
+Run it **more often than once a day** — the API only keeps your last ~50
+tracks, so on a heavy listening day a daily sync can still miss plays. Every 6
+hours is a safe, cheap cadence (one API call per run). Example, registering an
+every-6-hours hidden task:
 
 ```powershell
-$action  = New-ScheduledTaskAction -Execute "C:\CursorFiles\SoloStereo\scripts\sync.cmd"
+$action  = New-ScheduledTaskAction -Execute "wscript.exe" `
+             -Argument '"C:\CursorFiles\SoloStereo\scripts\sync-hidden.vbs"'
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
              -RepetitionInterval (New-TimeSpan -Hours 6)
 Register-ScheduledTask -TaskName "solostereo-sync" -Action $action -Trigger $trigger `
   -Description "Sync recent Spotify plays into solostereo"
 ```
 
-Remove it later with `Unregister-ScheduledTask -TaskName "solostereo-sync"`.
+For a fully background task that also runs when logged out, add a principal
+with `-LogonType S4U` (no stored password). Remove the task later with
+`Unregister-ScheduledTask -TaskName "solostereo-sync"`.
 Any gap larger than the ~50-track window can only be backfilled by
 re-requesting the Extended Streaming History export and re-importing (the
 dedup hash merges it with synced rows, no duplicates).
