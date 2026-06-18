@@ -32,7 +32,7 @@ script exists, Phase 1 onward).
 **Current phase:** Phases 0–7 COMPLETE and live. **Phase 8 (Playlist
 generation & Spotify round-trip) in progress** — agent-orchestrated build,
 subphase by subphase.
-**Next task:** 8A.1 (migration 005: playlists tables)
+**Next task:** 8A.2 (recipe engine + Obsessions generator)
 **Blocked on:** nothing
 
 ## Progress log
@@ -80,6 +80,8 @@ subphase by subphase.
 | 2026-06-13 | 7.1-7.3 | Live Spotify sync. Migration 004 (spotify_account single-row token table). Shared lib/dedup.ts so importer + API sync hash identically (validation still 10/10 → existing rows unchanged). OAuth auth-code flow (login/callback routes, state cookie, stores stable account_id + display name). lib/spotify.ts: token refresh + incremental recently-played sync into listening_events via INSERT OR IGNORE, source_filename='spotify-api', ms_played=duration_ms, cursor=last_played_at. /sync page (status, connect, sync now, disconnect) + nav link. 7.3: profile + canonical names/URIs captured (artwork deferred to Phase 8). Build green; not-configured + error paths verified in browser. Going live needs owner's Spotify dev credentials in .env.local. |
 | 2026-06-14 | sync | Scheduled run was popping a console window and stealing focus from a fullscreen game. Added scripts\sync-hidden.vbs (wscript launches `npm run sync` with window style 0 = hidden) and repointed the solostereo-sync task to `wscript.exe sync-hidden.vbs` + Settings.Hidden=true. Test-fired: LastTaskResult 0, fresh sync.log entry, no window. sync.cmd kept for manual runs. |
 | 2026-06-13 | design | Aesthetic refresh per owner: palette → Spotify-leaning **green on neutral near-black** (was amber/warm), one accent kept; cards softened at token level (--card barely above canvas, borders 8%) to reduce card-heaviness app-wide without restructuring pages. Year page: shrunk oversized year numeral (text-6xl/7xl), added CSS group-hover popover on top-25 artists showing their top songs that year (getYearArtistTopTracks). Compare two-series now green (present) vs light-gray (past). DESIGN.md updated. Artists/compare structurally unchanged. NB: Turbopack dev didn't invalidate globals.css token edits — had to delete .next + restart for the recolor to apply. |
+| 2026-06-18 | 8.plan | Phase 8 (playlists) opened: approved plan folded into §10 as 8A–8D checklist; prior candidate sections renumbered 9/10. docs/metadata-sources-research.md added (free-source survey; decision deferred — Spotify audio-features dead for this app, layered free pipeline recommended). Branch phase-8-playlists. |
+| 2026-06-18 | 8A.1 | Migration 005: playlists + playlist_tracks (draft/pushed lifecycle, recipe_key/params_json provenance, ordered tracks, FK ON DELETE CASCADE — foreign_keys pragma confirmed ON in lib/db.ts, included flag for exclude-without-delete, UNIQUE(playlist_id,uri)). migrate idempotent; listening_events unchanged (208,482). |
 
 ---
 
@@ -563,7 +565,7 @@ external metadata is deferred (see `docs/metadata-sources-research.md`). Full
 spec in the approved plan; concrete recipe definitions there.
 
 **Phase 8A — Data & recipe engine (headless, script-testable)**
-- [ ] **8A.1** Migration 005: `playlists` + `playlist_tracks` (FK cascade,
+- [x] **8A.1** Migration 005: `playlists` + `playlist_tracks` (FK cascade,
       `UNIQUE(playlist_id, spotify_track_uri)`). `npm run migrate` idempotent.
 - [ ] **8A.2** `lib/recipes.ts` registry + **Obsessions** generator
       (rolling-30d burst, tunable params); scratch script, numbers spot-checked.
