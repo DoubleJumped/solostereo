@@ -3,6 +3,41 @@
 A personal Spotify listening archive — a local web app for exploring a decade
 of Extended Streaming History as a beautiful, browsable artifact.
 
+## Screens
+
+> Shown with real listening history. Regenerate these from your own data with
+> `npm run screenshots` (see [scripts/screenshots.ts](scripts/screenshots.ts)).
+
+**Overview** — the landing dashboard: all-time vitals, a filterable
+listening-over-time chart, and your most-played artists, albums, and tracks.
+
+![Overview](docs/screenshots/overview.png)
+
+**Year in review** — a Wrapped-style recap for any year: top artist, hours and
+plays, and that year's top 25 artists ranked (hover one for its top songs).
+
+![Year in review](docs/screenshots/year.png)
+
+**Artists** — every artist you've ever played, with instant client-side search
+and sortable columns.
+
+![Artists](docs/screenshots/artists.png)
+
+**Artist detail** — one artist's whole story: "the arc" of listening year by
+year, a month-by-month trend, and their top albums and tracks.
+
+![Artist detail](docs/screenshots/artist.png)
+
+**Compare** — two years head to head: stat blocks, a monthly overlay, and a
+slopegraph of how your top ten reshuffled.
+
+![Compare](docs/screenshots/compare.png)
+
+**Sync** — the live-sync panel: connection status, event counts, and a manual
+sync.
+
+![Sync](docs/screenshots/sync.png)
+
 ## Setup
 
 Requirements: Node 20+ (developed on Node 24). No Docker, no external
