@@ -53,8 +53,8 @@ export function YearTimeline({
             >
               {b ? `${fmtInt(hours)}h` : "·"}
             </div>
-            <div className="tabular text-[10px] tracking-widest text-muted-foreground">
-              {String(year).slice(2)}
+            <div className="tabular text-[10px] text-muted-foreground">
+              {year}
             </div>
           </div>
         );
