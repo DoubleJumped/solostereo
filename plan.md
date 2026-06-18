@@ -29,9 +29,10 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phases 0–7 COMPLETE and live. Spotify connected; every-12h
-Windows scheduled task ("solostereo-sync") keeping the archive current.
-**Next task:** Phase 8/9 candidates (optional, not committed)
+**Current phase:** Phases 0–7 COMPLETE and live. **Phase 8 (Playlist
+generation & Spotify round-trip) in progress** — agent-orchestrated build,
+subphase by subphase.
+**Next task:** 8A.1 (migration 005: playlists tables)
 **Blocked on:** nothing
 
 ## Progress log
@@ -553,7 +554,48 @@ Goal: the annual editorial page.
       (same dedup mechanism); manual refresh action.
 - [x] **7.3** Lightweight metadata retrieval where helpful.
 
-### Phase 8: Enrichment and quality of life (candidates, not commitments)
+### Phase 8: Playlist generation & Spotify round-trip (committed)
+
+Turn listening behavior into playlists, review/edit them in-app, and push them
+back to Spotify. v1 recipes: **Obsessions** (velocity bursts that went quiet)
+and **Lapsed loves** (heavy historically, quiet recently). Built behavior-only;
+external metadata is deferred (see `docs/metadata-sources-research.md`). Full
+spec in the approved plan; concrete recipe definitions there.
+
+**Phase 8A — Data & recipe engine (headless, script-testable)**
+- [ ] **8A.1** Migration 005: `playlists` + `playlist_tracks` (FK cascade,
+      `UNIQUE(playlist_id, spotify_track_uri)`). `npm run migrate` idempotent.
+- [ ] **8A.2** `lib/recipes.ts` registry + **Obsessions** generator
+      (rolling-30d burst, tunable params); scratch script, numbers spot-checked.
+- [ ] **8A.3** **Lapsed loves** generator; sample output spot-checked.
+- [ ] **8A.4** `lib/playlists.ts` CRUD + `searchLocalTracks` (writable conn);
+      script: generate → persist draft → edit → read back.
+- [ ] **8A.G** Gate: `npm run validate` green (new checks); CLI smoke builds
+      both recipes + persists a draft; sample outputs recorded.
+
+**Phase 8B — Review/edit UI (fully offline)**
+- [ ] **8B.1** `/playlists` gallery + saved list + nav entry (DESIGN.md).
+- [ ] **8B.2** Generate flow (params form → draft → redirect to editor).
+- [ ] **8B.3** Editor: rename, public toggle, reorder, include/exclude, remove.
+- [ ] **8B.4** Manual add via local track search.
+- [ ] **8B.G** Gate: `npm run build` + lint green, screenshots; generate→edit→save offline.
+
+**Phase 8C — Spotify round-trip (push)**
+- [ ] **8C.1** Extend OAuth scopes (`playlist-modify-public/private`) +
+      sync-page reconnect prompt when scopes missing.
+- [ ] **8C.2** `lib/spotify.ts` create + batched add-tracks; persist Spotify
+      playlist id + snapshot.
+- [ ] **8C.3** Push action + confirm UI; `status='pushed'`, open-in-Spotify
+      link, re-push guard. Public by default (per-playlist toggle).
+- [ ] **8C.G** Gate: **live** push verified on owner's account; reconnect path
+      verified; `npm run validate` green.
+
+**Phase 8D — Docs & close-out**
+- [ ] **8D.1** Update `README.md` + `plan.md` (Status, progress log, check off).
+- [ ] **8D.2** Reference `docs/metadata-sources-research.md`; metadata stays a
+      future, separate decision.
+
+### Phase 9: Enrichment and quality of life (candidates, not commitments)
 
 - [ ] Album artwork and artist artwork via the API (this is where artwork
       enters the design — slots already reserved in the layouts)
@@ -562,13 +604,15 @@ Goal: the annual editorial page.
 - [ ] Saved custom views
 - [ ] Manual tagging of artists/albums
 - [ ] Exclude specific events from analytics without deleting them
+- [ ] Metadata-enriched recipes (genre/tempo/mood) — pending the decision in
+      `docs/metadata-sources-research.md`
 
-### Phase 9: Discovery features (only after the archive is useful on its own)
+### Phase 10: Discovery features (only after the archive is useful on its own)
 
-- [ ] Artists I listen to heavily but have not played recently
 - [ ] Barely-explored albums from familiar artists
 - [ ] Adjacent artists, new releases from known artists
-- [ ] Listening queue, manual exclusions, playlist export
+- [ ] Listening queue, manual exclusions
+      *(heavy-but-not-recent artists and playlist export delivered in Phase 8)*
 
 ## 11. Explicit non-goals for Phases 0–6
 
