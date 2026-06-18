@@ -82,7 +82,7 @@ export default async function YearInReviewPage({
         <h1 className="stat-numeral text-6xl leading-none text-primary sm:text-7xl">
           {year}
         </h1>
-        <dl className="grid grid-cols-3 gap-8 lg:pb-2">
+        <dl className="flex flex-wrap items-end gap-x-12 gap-y-6 lg:pb-2">
           <div>
             <dd className="stat-numeral text-4xl sm:text-5xl">
               {fmtInt(stats.listeningHours)}
@@ -100,7 +100,7 @@ export default async function YearInReviewPage({
             </dt>
           </div>
           <div>
-            <dd className="font-display text-2xl lowercase leading-tight tracking-tight sm:text-3xl">
+            <dd className="max-w-[16ch] font-display text-2xl lowercase leading-tight tracking-tight text-primary sm:text-3xl">
               {topArtist?.artistName ?? "—"}
             </dd>
             <dt className="mt-2 text-xs lowercase tracking-widest text-muted-foreground">

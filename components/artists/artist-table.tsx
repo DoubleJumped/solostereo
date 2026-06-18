@@ -63,6 +63,18 @@ export function ArtistTable({ rows }: { rows: ArtistTableRow[] }) {
 
   const visible = filtered.slice(0, shown);
 
+  // Body cell classes: the column you're sorting by glows green so the eye can
+  // follow it down the table; otherwise muted columns stay muted.
+  const cell = (key: SortKey, muted = false) =>
+    cn(
+      "tabular px-3 py-2 text-right",
+      sortKey === key
+        ? "text-primary"
+        : muted
+          ? "text-muted-foreground"
+          : undefined,
+    );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -117,33 +129,33 @@ export function ArtistTable({ rows }: { rows: ArtistTableRow[] }) {
             {visible.map((r) => (
               <tr
                 key={r.artistName}
-                className="border-b border-border/60 last:border-b-0 hover:bg-card"
+                className="border-b border-border/60 odd:bg-primary/[0.03] last:border-b-0 hover:bg-primary/[0.07]"
               >
                 <td className="max-w-[14rem] truncate px-4 py-2">
                   <Link
                     href={`/artists/${encodeURIComponent(r.artistName)}`}
-                    className="transition-colors hover:text-primary"
+                    className="font-medium text-primary transition-colors hover:text-primary/70"
                   >
                     {r.artistName}
                   </Link>
                 </td>
-                <td className="tabular px-3 py-2 text-right">
+                <td className={cell("meaningfulPlays")}>
                   {fmtInt(r.meaningfulPlays)}
                 </td>
-                <td className="tabular px-3 py-2 text-right">
+                <td className={cell("listeningMinutes")}>
                   {fmtMinutes(r.listeningMinutes)}
                 </td>
-                <td className="tabular px-3 py-2 text-right text-muted-foreground">
+                <td className={cell("firstPlayedAt", true)}>
                   {fmtDate(r.firstPlayedAt)}
                 </td>
-                <td className="tabular px-3 py-2 text-right text-muted-foreground">
+                <td className={cell("lastPlayedAt", true)}>
                   {fmtDate(r.lastPlayedAt)}
                 </td>
-                <td className="tabular px-3 py-2 text-right">
+                <td className={cell("distinctTracks")}>
                   {fmtInt(r.distinctTracks)}
                 </td>
-                <td className="tabular px-3 py-2 text-right">{r.activeYears}</td>
-                <td className="tabular px-3 py-2 text-right">{r.topYear}</td>
+                <td className={cell("activeYears")}>{r.activeYears}</td>
+                <td className={cell("topYear")}>{r.topYear}</td>
                 <td className="max-w-[12rem] truncate px-4 py-2 text-muted-foreground">
                   {r.topTrack ?? "—"}
                 </td>

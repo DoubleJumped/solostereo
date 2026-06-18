@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { OverviewStats } from "@/lib/queries";
 import { fmtInt, fmtMonthYear } from "@/lib/format";
 
@@ -7,7 +8,7 @@ function Card({
   hint,
   small = false,
 }: {
-  value: string;
+  value: ReactNode;
   label: string;
   hint?: string;
   small?: boolean;
@@ -17,7 +18,7 @@ function Card({
       <div
         className={
           small
-            ? "stat-numeral pt-1.5 text-lg leading-tight sm:text-xl"
+            ? "stat-numeral pt-1 text-lg leading-snug sm:text-xl"
             : "stat-numeral text-[2.1rem] leading-none sm:text-4xl"
         }
       >
@@ -48,9 +49,18 @@ export function SummaryCards({ stats }: { stats: OverviewStats }) {
       <Card value={fmtInt(stats.uniqueTracks)} label="tracks" />
       <Card
         value={
-          stats.firstEvent && stats.lastEvent
-            ? `${fmtMonthYear(stats.firstEvent)} — ${fmtMonthYear(stats.lastEvent)}`
-            : "—"
+          stats.firstEvent && stats.lastEvent ? (
+            <>
+              <span className="block whitespace-nowrap">
+                {fmtMonthYear(stats.firstEvent)}
+              </span>
+              <span className="block whitespace-nowrap text-muted-foreground">
+                &ndash; {fmtMonthYear(stats.lastEvent)}
+              </span>
+            </>
+          ) : (
+            "—"
+          )
         }
         label="listening span"
         small
