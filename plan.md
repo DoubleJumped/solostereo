@@ -34,35 +34,28 @@ script exists, Phase 1 onward).
 built: generate Obsessions/Lapsed-loves drafts, review/edit them, push to
 Spotify (create-or-update, no duplicates). Behaviour-only; metadata deferred.
 
-**Next task:** 8C.G — only the **live push** remains.
+**Next task:** Phase 8E (experimental recipes — expanding the recipe library).
 
-### ▶ RESUME HERE (paused — out of usage 2026-06-18)
+### ▶ Phase 8 status — build complete; live push deferred by owner
 
-Everything is committed on branch **`phase-8-playlists`** (16 commits; clean
-tree; `npm run build` green; `npm run validate` 11/11). Not merged to `master`.
+The playlist feature is **built, verified, and pushed to `origin`**. 8A
+(engine), 8B (review/edit UI), 8C (push code), 8D (docs) all complete.
 
-The single remaining step needs the **owner** (OAuth consent can't be
-automated). To finish 8C.G:
-1. `npm run dev` → open http://127.0.0.1:3000/sync → click **reconnect
-   spotify**, approve the new `playlist-modify-public/private` scopes. (The
-   stored account currently has read-only scopes, so push returns 409
-   `reconnect` until this is done — already browser-verified.)
-2. /playlists → generate a draft → edit → **push to spotify**. Confirm the
-   playlist appears on Spotify with the included tracks in order; push a
-   second time and confirm it **updates** the same playlist (no duplicate).
-3. Then mark 8C.G `[x]`, log it, and Phase 8 is fully complete. Optionally
-   merge `phase-8-playlists` → `master`.
+**8C.G (live push) is intentionally deferred to a future session** — the owner
+will reconnect Spotify and run the first live push then. The code + reconnect
+path are browser-verified (push API returns 409 `reconnect`; `/sync` shows the
+reconnect prompt). No further work needed until the owner is ready:
+1. `npm run dev` → http://127.0.0.1:3000/sync → **reconnect spotify** (grant
+   `playlist-modify-public/private`).
+2. /playlists → generate → edit → **push to spotify**; confirm it lands and a
+   second push **updates** the same playlist (no duplicate). Then tick 8C.G.
 
-**Known nit (low priority):** the generate form's "concentration" number
-input shows a float artifact (displays `0.6`, raw value `0.60000002`) —
-cosmetic, doesn't affect results. Fix in `components/playlists/generate-form.tsx`
-if desired.
+**Known nit (low priority):** generate form's "concentration" input shows a
+float artifact (displays `0.6`, raw `0.60000002`) — cosmetic. Fix in
+`components/playlists/generate-form.tsx` if desired.
 
-**Follow-up (separate, not started):** metadata-enriched recipes — decide off
-`docs/metadata-sources-research.md` (recommends a layered free pipeline:
-Spotify Get Track for ISRC/release-date + Last.fm tags + ReccoBeats features).
-
-**Blocked on:** owner reconnect + live push.
+**Follow-up (separate):** metadata-enriched recipes — decide off
+`docs/metadata-sources-research.md`.
 
 ## Progress log
 
@@ -118,6 +111,7 @@ Spotify Get Track for ISRC/release-date + Last.fm tags + ReccoBeats features).
 | 2026-06-18 | 8B | Review/edit UI. /playlists gallery (recipe cards + saved list + nav entry); /playlists/new generate form (params auto from defaultParams, obsessions year/which picker, live preview) → POST /api/playlists/generate (validate, createDraft) → redirect to editor. /playlists/[id] editor + client PlaylistEditor: rename/desc, public toggle, per-track include/exclude (dimmed), dependency-free up/down reorder, debounced manual-add via /api/playlists/search, remove, delete-with-confirm. API: PATCH/DELETE playlist; POST add / PATCH reorder; PATCH include / DELETE track; GET search. Browser-verified end to end (generate obsessions 2018 → exclude → add Arctic Monkeys → reload persists 10 tracks/9 included), no console errors, desktop+mobile on-brand. Test draft deleted; validate 11/11; DB clean. **Phase 8B complete.** |
 | 2026-06-18 | 8C | Spotify push round-trip. lib/spotify.ts: SPOTIFY_SCOPES += playlist-modify-public/private; hasPlaylistScopes(); createSpotifyPlaylist / replacePlaylistTracks (PUT first<=100 then POST remainder) / updatePlaylistDetails (reuse getValidAccessToken). lib/playlists.ts: getIncludedTracks + markPushed. POST /api/playlists/[id]/push: create-or-update (re-push updates same Spotify playlist, no dup), pushes included tracks in order, returns open url; 409 {error:reconnect} when account lacks scopes. Editor push/update button + reconnect/not-connected notices; /sync reconnect prompt. Browser-verified: push API 409 reconnect for the live read-only account, editor shows push button, /sync shows the reconnect notice+login link. build/lint/tsc clean. LIVE push gate (8C.G) awaits owner reconnect. |
 | 2026-06-18 | 8D | Docs. README: new "Playlists — generate, review, push" section (recipes, edit, push, one-time reconnect for write scopes), project-layout + validation (check 9) updates. docs/metadata-sources-research.md referenced; metadata enrichment stays a separate future decision. plan.md Status/Progress updated; 9/10 candidate sections renumbered earlier. |
+| 2026-06-18 | 8.close | Phase 8 build complete; live push (8C.G) deferred to a future session by owner. Plan finalized, branch pushed to origin. Added Phase 8E checklist — experimental behaviour-only recipes (deep cuts, old & new, gateway songs, one-hit obsessions, seasonal, faithful favourites, sleeper hits) to expand the recipe library. |
 
 ---
 
@@ -631,6 +625,30 @@ spec in the approved plan; concrete recipe definitions there.
 - [x] **8D.1** Update `README.md` + `plan.md` (Status, progress log, check off).
 - [x] **8D.2** Reference `docs/metadata-sources-research.md`; metadata stays a
       future, separate decision.
+
+**Phase 8E — Experimental recipes (expand the recipe library, behaviour-only)**
+
+New recipes registered in `lib/recipes.ts` (each appears automatically in the
+`/playlists` gallery and is fully editable/pushable). Each is spot-checked
+against the real DB and the engine smoke (`scripts/recipe-preview.ts`) before
+its checkbox is ticked; `RECIPES` keeps building (`npm run build`/lint green).
+- [ ] **8E.1** **Deep cuts** — per favourite artist, their 2nd/3rd/4th-best
+      tracks (skip the obvious #1 hit). Owner-requested.
+- [ ] **8E.2** **Old & new** — mixed-artist set pairing each favourite artist's
+      earliest-era and latest-era track (your relationship across time).
+      Owner-requested.
+- [ ] **8E.3** **Gateway songs** — the first track you ever played by artists
+      who went on to become favourites.
+- [ ] **8E.4** **One-hit obsessions** — artists where a single track dominates
+      your plays of them (your personal one-hit wonders).
+- [ ] **8E.5** **Seasonal fingerprints** — tracks you play disproportionately
+      in one season/month across years (summer songs, december songs).
+- [ ] **8E.6** **Faithful favourites** — tracks played steadily across many
+      calendar years (the evergreen inverse of Obsessions/Lapsed loves).
+- [ ] **8E.7** **Sleeper hits** — slow burns: a long gap between first play and
+      the peak listening stretch (took a while to click, then took over).
+- [ ] **8E.G** Gate: all new recipes produce sensible output (samples recorded);
+      gallery renders them; `npm run build`/lint/validate green; committed + pushed.
 
 ### Phase 9: Enrichment and quality of life (candidates, not commitments)
 
