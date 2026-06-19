@@ -1123,6 +1123,446 @@ export const GATEWAY_SONGS: Recipe<GatewaySongsParams> = {
   generate: generateGatewaySongs,
 };
 
+/** The four UTC seasons, in display order. */
+type Season = "winter" | "spring" | "summer" | "autumn";
+const SEASONS: Season[] = ["winter", "spring", "summer", "autumn"];
+const SEASON_LABEL: Record<Season, string> = {
+  winter: "Winter",
+  spring: "Spring",
+  summer: "Summer",
+  autumn: "Autumn",
+};
+
+/** Season of a UTC month index (0=Jan..11=Dec): Dec/Jan/Feb winter, etc. */
+function seasonOfMonth(month: number): Season {
+  if (month === 11 || month === 0 || month === 1) return "winter";
+  if (month >= 2 && month <= 4) return "spring";
+  if (month >= 5 && month <= 7) return "summer";
+  return "autumn";
+}
+
+export interface SeasonalParams {
+  /** Min lifetime meaningful plays for a track to qualify for any season. */
+  minPlays: number;
+  /** Min share (0..1) of a track's plays that must fall in one season. */
+  concentration: number;
+  /** Max tracks per generated (per-season) playlist. */
+  size: number;
+  /** Max tracks from any one artist per playlist. */
+  perArtistCap: number;
+  /** If set, only generate the playlist for this season. */
+  season?: Season;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const SEASONAL_DEFAULTS: SeasonalParams = {
+  minPlays: 8,
+  concentration: 0.5,
+  size: 40,
+  perArtistCap: 3,
+};
+
+interface SeasonalQualifier {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  season: Season;
+  seasonPlays: number;
+  plays: number;
+  seasonShare: number;
+  score: number;
+}
+
+/**
+ * Seasonal fingerprints: tracks I play disproportionately in one season across
+ * all years — my summer songs, my winter songs.
+ *
+ * From one ordered scan of meaningful plays we count, per track (by
+ * `spotify_track_uri`), how many plays fall in each UTC season (winter =
+ * Dec/Jan/Feb, spring = Mar/Apr/May, summer = Jun/Jul/Aug, autumn =
+ * Sep/Oct/Nov) and its lifetime total. A track qualifies for its single
+ * highest-share season when it cleared `minPlays` total AND that season's share
+ * is at least `concentration`. Qualifiers are bucketed into that one dominant
+ * season, ranked by `seasonShare * plays` desc within each (with a per-artist
+ * cap) and capped at `size`, returned as one playlist per season (or only
+ * `season` if the param is set). UTC throughout.
+ */
+function generateSeasonal(params: SeasonalParams): GeneratedPlaylist[] {
+  const { minPlays, concentration, size, perArtistCap, season } = params;
+
+  const rows = db()
+    .prepare(
+      `SELECT spotify_track_uri AS uri,
+              played_at,
+              artist_name,
+              track_name,
+              album_name
+       FROM music_listening_events
+       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ORDER BY spotify_track_uri, played_at`,
+    )
+    .all() as PlayRow[];
+
+  const qualifiers: SeasonalQualifier[] = [];
+
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    const uri = rows[start].uri;
+    while (end < rows.length && rows[end].uri === uri) end++;
+    const group = rows.slice(start, end);
+    start = end;
+
+    const plays = group.length;
+    if (plays < minPlays) continue;
+
+    const bySeason = new Map<Season, number>();
+    for (const r of group) {
+      const s = seasonOfMonth(new Date(r.played_at).getUTCMonth());
+      bySeason.set(s, (bySeason.get(s) ?? 0) + 1);
+    }
+
+    // The track's single highest-share (dominant) season.
+    let bestSeason: Season = "winter";
+    let bestPlays = 0;
+    for (const s of SEASONS) {
+      const n = bySeason.get(s) ?? 0;
+      if (n > bestPlays) {
+        bestPlays = n;
+        bestSeason = s;
+      }
+    }
+    const seasonShare = bestPlays / plays;
+    if (seasonShare < concentration) continue;
+
+    const display = pickDisplay(group);
+    qualifiers.push({
+      uri,
+      artist: display.artist,
+      track: display.track,
+      album: display.album,
+      season: bestSeason,
+      seasonPlays: bestPlays,
+      plays,
+      seasonShare,
+      score: seasonShare * plays,
+    });
+  }
+
+  const targetSeasons = season ? [season] : SEASONS;
+  const playlists: GeneratedPlaylist[] = [];
+
+  for (const s of targetSeasons) {
+    const candidates = qualifiers
+      .filter((q) => q.season === s)
+      .sort((a, b) => b.score - a.score);
+    if (candidates.length === 0) continue;
+
+    const perArtist = new Map<string, number>();
+    const picked: CandidateTrack[] = [];
+    for (const q of candidates) {
+      if (picked.length >= size) break;
+      const artistKey = q.artist ?? "";
+      const used = perArtist.get(artistKey) ?? 0;
+      if (used >= perArtistCap) continue;
+      perArtist.set(artistKey, used + 1);
+      picked.push({
+        uri: q.uri,
+        artist: q.artist,
+        track: q.track,
+        album: q.album,
+        score: q.score,
+        reason: `${Math.round(q.seasonShare * 100)}% of plays in ${s} (${q.seasonPlays} of ${q.plays})`,
+      });
+    }
+
+    playlists.push({
+      name: `${SEASON_LABEL[s]} songs`,
+      description:
+        `Tracks I play disproportionately in ${s} — ${minPlays}+ lifetime plays ` +
+        `with ${Math.round(concentration * 100)}%+ of them falling in ${s}.`,
+      recipeKey: "seasonal",
+      params: { ...params, season: s },
+      tracks: picked,
+    });
+  }
+
+  return playlists;
+}
+
+export const SEASONAL: Recipe<SeasonalParams> = {
+  key: "seasonal",
+  label: "Seasonal fingerprints",
+  description:
+    "Tracks I play disproportionately in one season across all years — my " +
+    "summer songs, my winter songs.",
+  defaultParams: SEASONAL_DEFAULTS,
+  generate: generateSeasonal,
+};
+
+export interface FaithfulFavouritesParams {
+  /** Min distinct UTC calendar years the track must have been played in. */
+  minYears: number;
+  /** Min lifetime meaningful plays. */
+  minPlays: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  /** Max tracks from any one artist. */
+  perArtistCap: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const FAITHFUL_FAVOURITES_DEFAULTS: FaithfulFavouritesParams = {
+  minYears: 5,
+  minPlays: 15,
+  size: 50,
+  perArtistCap: 3,
+};
+
+interface FaithfulQualifier extends CandidateTrack {
+  artistKey: string;
+}
+
+/**
+ * Faithful favourites: tracks played steadily across many calendar years — my
+ * evergreens, the inverse of Obsessions and Lapsed loves.
+ *
+ * From one ordered scan of meaningful plays we collect, per track (by
+ * `spotify_track_uri`), its distinct UTC calendar years and lifetime play
+ * count. A track qualifies when it spans at least `minYears` distinct years AND
+ * cleared `minPlays` total. The score `distinctYears * sqrt(plays)` puts breadth
+ * across years first with volume as a secondary boost. Ranked by score desc with
+ * a per-artist cap, capped at `size`, as a single playlist. UTC throughout.
+ */
+function generateFaithfulFavourites(
+  params: FaithfulFavouritesParams,
+): GeneratedPlaylist[] {
+  const { minYears, minPlays, size, perArtistCap } = params;
+
+  const rows = db()
+    .prepare(
+      `SELECT spotify_track_uri AS uri,
+              played_at,
+              artist_name,
+              track_name,
+              album_name
+       FROM music_listening_events
+       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ORDER BY spotify_track_uri, played_at`,
+    )
+    .all() as PlayRow[];
+
+  const candidates: FaithfulQualifier[] = [];
+
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    const uri = rows[start].uri;
+    while (end < rows.length && rows[end].uri === uri) end++;
+    const group = rows.slice(start, end);
+    start = end;
+
+    const plays = group.length;
+    if (plays < minPlays) continue;
+
+    const years = new Set<number>();
+    for (const r of group) years.add(utcYear(r.played_at));
+    const distinctYears = years.size;
+    if (distinctYears < minYears) continue;
+
+    const minYear = Math.min(...years);
+    const maxYear = Math.max(...years);
+    const display = pickDisplay(group);
+    candidates.push({
+      uri,
+      artist: display.artist,
+      track: display.track,
+      album: display.album,
+      score: distinctYears * Math.sqrt(plays),
+      reason: `played across ${distinctYears} years (${minYear}–${maxYear}) · ${plays} plays`,
+      artistKey: display.artist ?? "",
+    });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  const perArtist = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const c of candidates) {
+    if (picked.length >= size) break;
+    const used = perArtist.get(c.artistKey) ?? 0;
+    if (used >= perArtistCap) continue;
+    perArtist.set(c.artistKey, used + 1);
+    const { artistKey: _artistKey, ...track } = c;
+    void _artistKey;
+    picked.push(track);
+  }
+
+  return [
+    {
+      name: "Faithful favourites",
+      description:
+        `Tracks I've played steadily across ${minYears}+ calendar years ` +
+        `(${minPlays}+ plays) — my evergreens, the inverse of Obsessions.`,
+      recipeKey: "faithfulFavourites",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const FAITHFUL_FAVOURITES: Recipe<FaithfulFavouritesParams> = {
+  key: "faithfulFavourites",
+  label: "Faithful favourites",
+  description:
+    "Tracks I've played steadily across many calendar years — my evergreens, " +
+    "the inverse of Obsessions and Lapsed loves.",
+  defaultParams: FAITHFUL_FAVOURITES_DEFAULTS,
+  generate: generateFaithfulFavourites,
+};
+
+export interface SleeperHitsParams {
+  /** Min lifetime meaningful plays for a track to be considered. */
+  minPlays: number;
+  /** Min months between first play and the start of the peak 30-day window. */
+  minGapMonths: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  /** Max tracks from any one artist. */
+  perArtistCap: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const SLEEPER_HITS_DEFAULTS: SleeperHitsParams = {
+  minPlays: 10,
+  minGapMonths: 12,
+  size: 40,
+  perArtistCap: 3,
+};
+
+interface SleeperQualifier {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  firstIso: string;
+  peakStartIso: string;
+  gapMonths: number;
+  peakWindowPlays: number;
+  score: number;
+}
+
+/**
+ * Sleeper hits: slow burns — a long gap between when I first played a track and
+ * when it finally took over.
+ *
+ * Reusing the ordered-scan + `peakWindow(...)` approach from Obsessions, for
+ * each track (by `spotify_track_uri`) clearing `minPlays` meaningful plays we
+ * take its earliest play and the start of its densest 30-day window. The gap
+ * (in whole-ish months, never negative) is how long it sat before taking off;
+ * a track qualifies when that gap is at least `minGapMonths`. Scored by
+ * `gapMonths * peakWindowPlays` (longer slow-burns that then peaked hard lead),
+ * ranked desc with a per-artist cap, capped at `size`, as a single playlist.
+ * UTC throughout.
+ */
+function generateSleeperHits(params: SleeperHitsParams): GeneratedPlaylist[] {
+  const { minPlays, minGapMonths, size, perArtistCap } = params;
+
+  const rows = db()
+    .prepare(
+      `SELECT spotify_track_uri AS uri,
+              played_at,
+              artist_name,
+              track_name,
+              album_name
+       FROM music_listening_events
+       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ORDER BY spotify_track_uri, played_at`,
+    )
+    .all() as PlayRow[];
+
+  const qualifiers: SleeperQualifier[] = [];
+
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    const uri = rows[start].uri;
+    while (end < rows.length && rows[end].uri === uri) end++;
+    const group = rows.slice(start, end);
+    start = end;
+
+    if (group.length < minPlays) continue;
+
+    const isos = group.map((r) => r.played_at);
+    const times = isos.map((s) => new Date(s).getTime());
+    const firstMs = times[0]; // sorted ascending
+    const peak = peakWindow(times, isos);
+    const peakStartMs = new Date(peak.startIso).getTime();
+
+    const gapMonths = Math.max(0, (peakStartMs - firstMs) / (30 * DAY_MS));
+    if (gapMonths < minGapMonths) continue;
+
+    const display = pickDisplay(group);
+    qualifiers.push({
+      uri,
+      artist: display.artist,
+      track: display.track,
+      album: display.album,
+      firstIso: isos[0],
+      peakStartIso: peak.startIso,
+      gapMonths,
+      peakWindowPlays: peak.peakWindowPlays,
+      score: gapMonths * peak.peakWindowPlays,
+    });
+  }
+
+  qualifiers.sort((a, b) => b.score - a.score);
+
+  const perArtist = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const q of qualifiers) {
+    if (picked.length >= size) break;
+    const artistKey = q.artist ?? "";
+    const used = perArtist.get(artistKey) ?? 0;
+    if (used >= perArtistCap) continue;
+    perArtist.set(artistKey, used + 1);
+    picked.push({
+      uri: q.uri,
+      artist: q.artist,
+      track: q.track,
+      album: q.album,
+      score: q.score,
+      reason: `first heard ${monthYearLabel(q.firstIso)}, took off ${monthYearLabel(q.peakStartIso)} — ${Math.round(q.gapMonths)} months later`,
+    });
+  }
+
+  return [
+    {
+      name: "Sleeper hits",
+      description:
+        `Slow burns — tracks (${minPlays}+ plays) where ${minGapMonths}+ months ` +
+        `passed between the first play and the peak listening stretch.`,
+      recipeKey: "sleeperHits",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const SLEEPER_HITS: Recipe<SleeperHitsParams> = {
+  key: "sleeperHits",
+  label: "Sleeper hits",
+  description:
+    "Slow burns — a long gap between when I first played a track and when it " +
+    "finally took over.",
+  defaultParams: SLEEPER_HITS_DEFAULTS,
+  generate: generateSleeperHits,
+};
+
 /**
  * Recipe registry. Keyed by `recipeKey` so generated playlists can be traced
  * back to the recipe that built them (provenance lives in playlist_tracks per
@@ -1135,4 +1575,7 @@ export const RECIPES: Record<string, Recipe> = {
   [ONE_HIT_OBSESSIONS.key]: ONE_HIT_OBSESSIONS,
   [OLD_AND_NEW.key]: OLD_AND_NEW,
   [GATEWAY_SONGS.key]: GATEWAY_SONGS,
+  [SEASONAL.key]: SEASONAL,
+  [FAITHFUL_FAVOURITES.key]: FAITHFUL_FAVOURITES,
+  [SLEEPER_HITS.key]: SLEEPER_HITS,
 };

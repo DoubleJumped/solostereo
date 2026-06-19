@@ -641,11 +641,11 @@ its checkbox is ticked; `RECIPES` keeps building (`npm run build`/lint green).
       who went on to become favourites.
 - [x] **8E.4** **One-hit obsessions** — artists where a single track dominates
       your plays of them (your personal one-hit wonders).
-- [ ] **8E.5** **Seasonal fingerprints** — tracks you play disproportionately
+- [x] **8E.5** **Seasonal fingerprints** — tracks you play disproportionately
       in one season/month across years (summer songs, december songs).
-- [ ] **8E.6** **Faithful favourites** — tracks played steadily across many
+- [x] **8E.6** **Faithful favourites** — tracks played steadily across many
       calendar years (the evergreen inverse of Obsessions/Lapsed loves).
-- [ ] **8E.7** **Sleeper hits** — slow burns: a long gap between first play and
+- [x] **8E.7** **Sleeper hits** — slow burns: a long gap between first play and
       the peak listening stretch (took a while to click, then took over).
 - [ ] **8E.G** Gate: all new recipes produce sensible output (samples recorded);
       gallery renders them; `npm run build`/lint/validate green; committed + pushed.
