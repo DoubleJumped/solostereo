@@ -34,7 +34,8 @@ script exists, Phase 1 onward).
 built: generate Obsessions/Lapsed-loves drafts, review/edit them, push to
 Spotify (create-or-update, no duplicates). Behaviour-only; metadata deferred.
 
-**Next task:** Phase 8E (experimental recipes — expanding the recipe library).
+**Next task:** Phase 8 fully built (8A–8E). Only owner-gated live push (8C.G)
+remains for a future session. Recipe library now has **9 recipes**.
 
 ### ▶ Phase 8 status — build complete; live push deferred by owner
 
@@ -112,6 +113,7 @@ float artifact (displays `0.6`, raw `0.60000002`) — cosmetic. Fix in
 | 2026-06-18 | 8C | Spotify push round-trip. lib/spotify.ts: SPOTIFY_SCOPES += playlist-modify-public/private; hasPlaylistScopes(); createSpotifyPlaylist / replacePlaylistTracks (PUT first<=100 then POST remainder) / updatePlaylistDetails (reuse getValidAccessToken). lib/playlists.ts: getIncludedTracks + markPushed. POST /api/playlists/[id]/push: create-or-update (re-push updates same Spotify playlist, no dup), pushes included tracks in order, returns open url; 409 {error:reconnect} when account lacks scopes. Editor push/update button + reconnect/not-connected notices; /sync reconnect prompt. Browser-verified: push API 409 reconnect for the live read-only account, editor shows push button, /sync shows the reconnect notice+login link. build/lint/tsc clean. LIVE push gate (8C.G) awaits owner reconnect. |
 | 2026-06-18 | 8D | Docs. README: new "Playlists — generate, review, push" section (recipes, edit, push, one-time reconnect for write scopes), project-layout + validation (check 9) updates. docs/metadata-sources-research.md referenced; metadata enrichment stays a separate future decision. plan.md Status/Progress updated; 9/10 candidate sections renumbered earlier. |
 | 2026-06-18 | 8.close | Phase 8 build complete; live push (8C.G) deferred to a future session by owner. Plan finalized, branch pushed to origin. Added Phase 8E checklist — experimental behaviour-only recipes (deep cuts, old & new, gateway songs, one-hit obsessions, seasonal, faithful favourites, sleeper hits) to expand the recipe library. |
+| 2026-06-18 | 8E | Experimental recipes — recipe library expanded from 2 to 9 (all behaviour-only, in lib/recipes.ts, auto-listed in /playlists gallery). Added: deepCuts (2nd/3rd/4th-best per favourite artist), oneHitObsessions (one track dominates an artist you played 3+ songs by), oldAndNew (earliest+latest-discovered track per artist, interleaved), gatewaySongs (first track ever played by each favourite), seasonal (4 per-season playlists by play concentration), faithfulFavourites (played across many calendar years), sleeperHits (long gap from first play to peak). Each spot-checked vs DB; gallery renders all 9; deepCuts verified end-to-end through UI; build/lint/validate(11/11) green; DB clean. Branch pushed to origin. |
 
 ---
 
@@ -647,8 +649,9 @@ its checkbox is ticked; `RECIPES` keeps building (`npm run build`/lint green).
       calendar years (the evergreen inverse of Obsessions/Lapsed loves).
 - [x] **8E.7** **Sleeper hits** — slow burns: a long gap between first play and
       the peak listening stretch (took a while to click, then took over).
-- [ ] **8E.G** Gate: all new recipes produce sensible output (samples recorded);
-      gallery renders them; `npm run build`/lint/validate green; committed + pushed.
+- [x] **8E.G** Gate: 9 recipes registered; gallery renders all 9 with working
+      generate links; deepCuts verified end-to-end through the UI; samples
+      spot-checked; `npm run build`/lint/validate (11/11) green; DB clean; pushed.
 
 ### Phase 9: Enrichment and quality of life (candidates, not commitments)
 
