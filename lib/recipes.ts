@@ -471,6 +471,335 @@ export const LAPSED_LOVES: Recipe<LapsedLovesParams> = {
   generate: generateLapsedLoves,
 };
 
+export interface DeepCutsParams {
+  /** Min total meaningful plays for an artist to be a "favourite". */
+  minArtistPlays: number;
+  /** Which within-artist play ranks count as deep cuts (1 = the #1 hit). */
+  ranks: number[];
+  /** Max deep cuts taken from any one artist. */
+  perArtist: number;
+  /** Only consider the top N favourite artists by total meaningful plays. */
+  topArtists: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const DEEP_CUTS_DEFAULTS: DeepCutsParams = {
+  minArtistPlays: 60,
+  ranks: [2, 3, 4],
+  perArtist: 3,
+  topArtists: 30,
+  size: 60,
+};
+
+/** One uri's within-artist rank from the windowed aggregate. */
+interface DeepCutRow {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  plays: number; // this uri's meaningful plays
+  rank: number; // 1 = artist's most-played track
+  artistPlays: number; // artist's total meaningful plays
+}
+
+/**
+ * Deep cuts: for each favourite artist, the tracks ranked 2nd/3rd/4th by my
+ * meaningful plays — the songs I love past the obvious #1 hit.
+ *
+ * Artists are favourites once their total meaningful plays clear
+ * `minArtistPlays`; only the top `topArtists` by that total are considered.
+ * Within each artist we rank tracks (by `spotify_track_uri`) on meaningful
+ * plays desc and keep those whose rank lands in `ranks` (default 2nd–4th), up
+ * to `perArtist` per artist. A representative artist/track/album name is picked
+ * per uri in SQL. The combined set is sorted by the track's own meaningful
+ * plays desc and capped at `size`, returned as a single playlist. UTC, via the
+ * meaningful-play (`ms_played >= 30000`) filter on `music_listening_events`.
+ */
+function generateDeepCuts(params: DeepCutsParams): GeneratedPlaylist[] {
+  const { minArtistPlays, ranks, perArtist, topArtists, size } = params;
+
+  // Per-uri meaningful-play aggregate with a within-artist rank, plus the
+  // artist's total meaningful plays (restricted to favourite artists). A
+  // representative name per uri is chosen by play count via a grouped subquery.
+  const rows = db()
+    .prepare(
+      `WITH plays AS (
+         SELECT spotify_track_uri AS uri,
+                artist_name,
+                track_name,
+                album_name,
+                played_at
+         FROM music_listening_events
+         WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+           AND artist_name IS NOT NULL
+       ),
+       artist_totals AS (
+         SELECT artist_name, COUNT(*) AS artistPlays
+         FROM plays
+         GROUP BY artist_name
+         HAVING COUNT(*) >= ?
+         ORDER BY artistPlays DESC
+         LIMIT ?
+       ),
+       uri_agg AS (
+         SELECT p.uri,
+                p.artist_name,
+                COUNT(*) AS plays
+         FROM plays p
+         JOIN artist_totals a ON a.artist_name = p.artist_name
+         GROUP BY p.uri
+       ),
+       ranked AS (
+         SELECT uri,
+                artist_name,
+                plays,
+                ROW_NUMBER() OVER (
+                  PARTITION BY artist_name
+                  ORDER BY plays DESC, uri
+                ) AS rank
+         FROM uri_agg
+       ),
+       names AS (
+         SELECT uri, artist_name, track_name, album_name,
+                ROW_NUMBER() OVER (
+                  PARTITION BY uri
+                  ORDER BY COUNT(*) DESC, MAX(played_at) DESC
+                ) AS rn
+         FROM plays
+         GROUP BY uri, artist_name, track_name, album_name
+       )
+       SELECT ranked.uri            AS uri,
+              names.artist_name     AS artist,
+              names.track_name      AS track,
+              names.album_name      AS album,
+              ranked.plays          AS plays,
+              ranked.rank           AS rank,
+              artist_totals.artistPlays AS artistPlays
+       FROM ranked
+       JOIN names ON names.uri = ranked.uri AND names.rn = 1
+       JOIN artist_totals ON artist_totals.artist_name = ranked.artist_name
+       ORDER BY ranked.plays DESC`,
+    )
+    .all(minArtistPlays, topArtists) as DeepCutRow[];
+
+  const rankSet = new Set(ranks);
+
+  const candidates: (CandidateTrack & { artistKey: string })[] = [];
+  for (const r of rows) {
+    if (!rankSet.has(r.rank)) continue;
+    candidates.push({
+      uri: r.uri,
+      artist: r.artist,
+      track: r.track,
+      album: r.album,
+      score: r.plays,
+      reason: `your #${r.rank} most-played ${r.artist ?? "?"} track (${r.plays} plays)`,
+      artistKey: r.artist ?? "",
+    });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  const perArtistCount = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const c of candidates) {
+    if (picked.length >= size) break;
+    const used = perArtistCount.get(c.artistKey) ?? 0;
+    if (used >= perArtist) continue;
+    perArtistCount.set(c.artistKey, used + 1);
+    const { artistKey: _artistKey, ...track } = c;
+    void _artistKey;
+    picked.push(track);
+  }
+
+  return [
+    {
+      name: "Deep cuts",
+      description:
+        `For my favourite artists (${minArtistPlays}+ plays), the tracks ranked ` +
+        `${ranks.join("/")} by my plays — the songs I love past the obvious #1 hit.`,
+      recipeKey: "deepCuts",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const DEEP_CUTS: Recipe<DeepCutsParams> = {
+  key: "deepCuts",
+  label: "Deep cuts",
+  description:
+    "For my favourite artists, their 2nd/3rd/4th most-played tracks — the " +
+    "songs I love beyond the obvious #1 hit.",
+  defaultParams: DEEP_CUTS_DEFAULTS,
+  generate: generateDeepCuts,
+};
+
+export interface OneHitObsessionsParams {
+  /** Min total meaningful plays for an artist to qualify. */
+  minArtistPlays: number;
+  /** Min share (0..1) of the artist's plays the top track must hold. */
+  dominance: number;
+  /**
+   * Min distinct tracks I've played by the artist. Keeps the recipe to the
+   * interesting case — a real catalogue where one song still dominates —
+   * rather than artists I only ever played one song by.
+   */
+  minDistinctTracks: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const ONE_HIT_OBSESSIONS_DEFAULTS: OneHitObsessionsParams = {
+  minArtistPlays: 25,
+  dominance: 0.6,
+  minDistinctTracks: 3,
+  size: 50,
+};
+
+/** One artist's dominating top track from the aggregate. */
+interface OneHitRow {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  topPlays: number; // top track's meaningful plays
+  artistPlays: number; // artist's total meaningful plays
+  distinctTracks: number; // distinct tracks I've played by the artist
+}
+
+/**
+ * One-hit obsessions: artists where a single track dominates my plays of them —
+ * my personal one-hit wonders.
+ *
+ * For each artist clearing `minArtistPlays` total meaningful plays we find their
+ * top track (by meaningful plays) and that track's share of the artist's total.
+ * The artist qualifies when the share is at least `dominance`, and we include
+ * that one dominating track. Scored by `share * artistPlays` (so a dominant
+ * track from a heavily-played artist outranks one from a lightly-played artist),
+ * sorted by share desc then plays desc, capped at `size`, as a single playlist.
+ * Names are chosen per uri in SQL. UTC, meaningful plays only.
+ */
+function generateOneHitObsessions(
+  params: OneHitObsessionsParams,
+): GeneratedPlaylist[] {
+  const { minArtistPlays, dominance, minDistinctTracks, size } = params;
+
+  // Per-artist: total plays, and the top track's uri + plays via a windowed
+  // rank over per-uri aggregates. Representative names chosen per uri in SQL.
+  const rows = db()
+    .prepare(
+      `WITH plays AS (
+         SELECT spotify_track_uri AS uri,
+                artist_name,
+                track_name,
+                album_name,
+                played_at
+         FROM music_listening_events
+         WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+           AND artist_name IS NOT NULL
+       ),
+       artist_totals AS (
+         SELECT artist_name,
+                COUNT(*) AS artistPlays,
+                COUNT(DISTINCT uri) AS distinctTracks
+         FROM plays
+         GROUP BY artist_name
+         HAVING COUNT(*) >= ? AND COUNT(DISTINCT uri) >= ?
+       ),
+       uri_agg AS (
+         SELECT uri, artist_name, COUNT(*) AS plays
+         FROM plays
+         GROUP BY uri
+       ),
+       ranked AS (
+         SELECT u.uri,
+                u.artist_name,
+                u.plays,
+                ROW_NUMBER() OVER (
+                  PARTITION BY u.artist_name
+                  ORDER BY u.plays DESC, u.uri
+                ) AS rank
+         FROM uri_agg u
+         JOIN artist_totals a ON a.artist_name = u.artist_name
+       ),
+       names AS (
+         SELECT uri, artist_name, track_name, album_name,
+                ROW_NUMBER() OVER (
+                  PARTITION BY uri
+                  ORDER BY COUNT(*) DESC, MAX(played_at) DESC
+                ) AS rn
+         FROM plays
+         GROUP BY uri, artist_name, track_name, album_name
+       )
+       SELECT ranked.uri            AS uri,
+              names.artist_name     AS artist,
+              names.track_name      AS track,
+              names.album_name      AS album,
+              ranked.plays          AS topPlays,
+              artist_totals.artistPlays AS artistPlays,
+              artist_totals.distinctTracks AS distinctTracks
+       FROM ranked
+       JOIN names ON names.uri = ranked.uri AND names.rn = 1
+       JOIN artist_totals ON artist_totals.artist_name = ranked.artist_name
+       WHERE ranked.rank = 1`,
+    )
+    .all(minArtistPlays, minDistinctTracks) as OneHitRow[];
+
+  const qualifying: (CandidateTrack & { share: number })[] = [];
+  for (const r of rows) {
+    const share = r.topPlays / r.artistPlays;
+    if (share < dominance) continue;
+    qualifying.push({
+      uri: r.uri,
+      artist: r.artist,
+      track: r.track,
+      album: r.album,
+      score: share * r.artistPlays,
+      reason: `${Math.round(share * 100)}% of your ${r.artist ?? "?"} plays — '${r.track ?? "?"}' (${r.topPlays} of ${r.artistPlays}, across ${r.distinctTracks} of their songs)`,
+      share,
+    });
+  }
+
+  // Share desc, then top-track plays (encoded in score relative to share) desc.
+  qualifying.sort((a, b) => b.share - a.share || b.score - a.score);
+
+  const picked: CandidateTrack[] = qualifying
+    .slice(0, size)
+    .map(({ share: _share, ...track }) => {
+      void _share;
+      return track;
+    });
+
+  return [
+    {
+      name: "One-hit obsessions",
+      description:
+        `Artists I've played ${minDistinctTracks}+ songs by (${minArtistPlays}+ plays) ` +
+        `where a single track is still ${Math.round(dominance * 100)}%+ of ` +
+        `everything I played by them — my personal one-hit wonders.`,
+      recipeKey: "oneHitObsessions",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const ONE_HIT_OBSESSIONS: Recipe<OneHitObsessionsParams> = {
+  key: "oneHitObsessions",
+  label: "One-hit obsessions",
+  description:
+    "Artists where a single track dominates my plays of them — my personal " +
+    "one-hit wonders.",
+  defaultParams: ONE_HIT_OBSESSIONS_DEFAULTS,
+  generate: generateOneHitObsessions,
+};
+
 /**
  * Recipe registry. Keyed by `recipeKey` so generated playlists can be traced
  * back to the recipe that built them (provenance lives in playlist_tracks per
@@ -479,4 +808,6 @@ export const LAPSED_LOVES: Recipe<LapsedLovesParams> = {
 export const RECIPES: Record<string, Recipe> = {
   [OBSESSIONS.key]: OBSESSIONS,
   [LAPSED_LOVES.key]: LAPSED_LOVES,
+  [DEEP_CUTS.key]: DEEP_CUTS,
+  [ONE_HIT_OBSESSIONS.key]: ONE_HIT_OBSESSIONS,
 };

@@ -632,14 +632,14 @@ New recipes registered in `lib/recipes.ts` (each appears automatically in the
 `/playlists` gallery and is fully editable/pushable). Each is spot-checked
 against the real DB and the engine smoke (`scripts/recipe-preview.ts`) before
 its checkbox is ticked; `RECIPES` keeps building (`npm run build`/lint green).
-- [ ] **8E.1** **Deep cuts** — per favourite artist, their 2nd/3rd/4th-best
+- [x] **8E.1** **Deep cuts** — per favourite artist, their 2nd/3rd/4th-best
       tracks (skip the obvious #1 hit). Owner-requested.
 - [ ] **8E.2** **Old & new** — mixed-artist set pairing each favourite artist's
       earliest-era and latest-era track (your relationship across time).
       Owner-requested.
 - [ ] **8E.3** **Gateway songs** — the first track you ever played by artists
       who went on to become favourites.
-- [ ] **8E.4** **One-hit obsessions** — artists where a single track dominates
+- [x] **8E.4** **One-hit obsessions** — artists where a single track dominates
       your plays of them (your personal one-hit wonders).
 - [ ] **8E.5** **Seasonal fingerprints** — tracks you play disproportionately
       in one season/month across years (summer songs, december songs).
