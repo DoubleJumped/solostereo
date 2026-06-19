@@ -33,10 +33,36 @@ script exists, Phase 1 onward).
 **8A, 8B, 8D complete; 8C code complete and verified.** The whole feature is
 built: generate Obsessions/Lapsed-loves drafts, review/edit them, push to
 Spotify (create-or-update, no duplicates). Behaviour-only; metadata deferred.
-**Next task:** 8C.G — the only remaining step is the **live push**, which
-needs the owner to **reconnect Spotify on /sync** (to grant
-`playlist-modify-public/private`) and click **push** on a playlist.
-**Blocked on:** owner reconnect + live push (OAuth consent can't be automated).
+
+**Next task:** 8C.G — only the **live push** remains.
+
+### ▶ RESUME HERE (paused — out of usage 2026-06-18)
+
+Everything is committed on branch **`phase-8-playlists`** (16 commits; clean
+tree; `npm run build` green; `npm run validate` 11/11). Not merged to `master`.
+
+The single remaining step needs the **owner** (OAuth consent can't be
+automated). To finish 8C.G:
+1. `npm run dev` → open http://127.0.0.1:3000/sync → click **reconnect
+   spotify**, approve the new `playlist-modify-public/private` scopes. (The
+   stored account currently has read-only scopes, so push returns 409
+   `reconnect` until this is done — already browser-verified.)
+2. /playlists → generate a draft → edit → **push to spotify**. Confirm the
+   playlist appears on Spotify with the included tracks in order; push a
+   second time and confirm it **updates** the same playlist (no duplicate).
+3. Then mark 8C.G `[x]`, log it, and Phase 8 is fully complete. Optionally
+   merge `phase-8-playlists` → `master`.
+
+**Known nit (low priority):** the generate form's "concentration" number
+input shows a float artifact (displays `0.6`, raw value `0.60000002`) —
+cosmetic, doesn't affect results. Fix in `components/playlists/generate-form.tsx`
+if desired.
+
+**Follow-up (separate, not started):** metadata-enriched recipes — decide off
+`docs/metadata-sources-research.md` (recommends a layered free pipeline:
+Spotify Get Track for ISRC/release-date + Last.fm tags + ReccoBeats features).
+
+**Blocked on:** owner reconnect + live push.
 
 ## Progress log
 
