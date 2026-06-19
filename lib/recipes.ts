@@ -11,7 +11,7 @@ import { openDb } from "./db";
  * cached `query_only` connection pattern as lib/queries.ts.
  *
  * v1 recipes (plan.md §10, Phase 8A): **Obsessions** (velocity bursts that
- * went quiet) is registered here; **Lapsed loves** is added in 8A.3.
+ * went quiet) and **Lapsed loves** (heavy historically, quiet recently).
  */
 
 let _db: Database.Database | null = null;
@@ -326,11 +326,157 @@ export const OBSESSIONS: Recipe<ObsessionsParams> = {
   generate: generateObsessions,
 };
 
+export interface LapsedLovesParams {
+  /** Min lifetime meaningful plays to count as a historical love. */
+  minPlays: number;
+  /** Track must have had no meaningful play in the last N months. */
+  lapseMonths: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  /** Max tracks from any one artist. */
+  perArtistCap: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const LAPSED_LOVES_DEFAULTS: LapsedLovesParams = {
+  minPlays: 8,
+  lapseMonths: 18,
+  size: 40,
+  perArtistCap: 2,
+};
+
+/** One uri's lifetime aggregate from the GROUP BY scan. */
+interface LapsedRow {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  lifetimePlays: number;
+  lastPlayed: string; // MAX(played_at), ISO
+}
+
 /**
- * Recipe registry. Obsessions is registered now; Lapsed loves is added in
- * 8A.3. Keyed by `recipeKey` so generated playlists can be traced back to the
- * recipe that built them (provenance lives in playlist_tracks per 8A.1).
+ * Lapsed loves: tracks with high historical affinity that have gone quiet.
+ *
+ * Over meaningful plays we aggregate each uri's lifetime play count and the
+ * most recent time it was heard. A track qualifies when it cleared `minPlays`
+ * historically AND hasn't had a meaningful play in `lapseMonths` months. The
+ * score `lifetimePlays * sqrt(monthsSinceLastPlayed)` rewards both heavy past
+ * play and longer absence, so a once-loved track that's been silent for years
+ * outranks a slightly-more-played one set aside only recently. Ranked by score
+ * desc with a per-artist cap, returned as a single playlist. UTC throughout.
+ */
+function generateLapsedLoves(params: LapsedLovesParams): GeneratedPlaylist[] {
+  const { minPlays, lapseMonths, size, perArtistCap } = params;
+
+  const lapseCutoffMs = monthsAgoMs(lapseMonths);
+  const nowMs = Date.now();
+
+  // Aggregate per uri: lifetime play count, last-played, and a representative
+  // (most-frequent) artist/track/album picked in SQL via a grouped subquery.
+  const rows = db()
+    .prepare(
+      `WITH plays AS (
+         SELECT spotify_track_uri AS uri,
+                artist_name,
+                track_name,
+                album_name,
+                played_at
+         FROM music_listening_events
+         WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ),
+       agg AS (
+         SELECT uri,
+                COUNT(*)        AS lifetimePlays,
+                MAX(played_at)  AS lastPlayed
+         FROM plays
+         GROUP BY uri
+       ),
+       names AS (
+         SELECT uri, artist_name, track_name, album_name,
+                ROW_NUMBER() OVER (
+                  PARTITION BY uri
+                  ORDER BY COUNT(*) DESC, MAX(played_at) DESC
+                ) AS rn
+         FROM plays
+         GROUP BY uri, artist_name, track_name, album_name
+       )
+       SELECT agg.uri              AS uri,
+              names.artist_name    AS artist,
+              names.track_name     AS track,
+              names.album_name     AS album,
+              agg.lifetimePlays    AS lifetimePlays,
+              agg.lastPlayed       AS lastPlayed
+       FROM agg
+       JOIN names ON names.uri = agg.uri AND names.rn = 1
+       WHERE agg.lifetimePlays >= ?
+       ORDER BY agg.lifetimePlays DESC`,
+    )
+    .all(minPlays) as LapsedRow[];
+
+  const candidates: CandidateTrack[] = [];
+
+  for (const r of rows) {
+    const lastPlayedMs = new Date(r.lastPlayed).getTime();
+    // Still heard recently → not lapsed.
+    if (lastPlayedMs >= lapseCutoffMs) continue;
+
+    const monthsSince = (nowMs - lastPlayedMs) / (30 * DAY_MS);
+    const score = r.lifetimePlays * Math.sqrt(monthsSince);
+
+    candidates.push({
+      uri: r.uri,
+      artist: r.artist,
+      track: r.track,
+      album: r.album,
+      score,
+      reason: `Played ${r.lifetimePlays} times, last heard ${monthYearLabel(r.lastPlayed)}`,
+    });
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  const perArtist = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const c of candidates) {
+    if (picked.length >= size) break;
+    const artistKey = c.artist ?? "";
+    const used = perArtist.get(artistKey) ?? 0;
+    if (used >= perArtistCap) continue;
+    perArtist.set(artistKey, used + 1);
+    picked.push(c);
+  }
+
+  return [
+    {
+      name: "Lapsed loves",
+      description:
+        `Tracks I played a lot (${minPlays}+ times) but haven't heard in ` +
+        `${lapseMonths}+ months — high historical affinity, gone quiet.`,
+      recipeKey: "lapsedLoves",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const LAPSED_LOVES: Recipe<LapsedLovesParams> = {
+  key: "lapsedLoves",
+  label: "Lapsed loves",
+  description:
+    "Tracks I played a lot historically but haven't heard in a long time — " +
+    "high lifetime affinity that's since gone quiet.",
+  defaultParams: LAPSED_LOVES_DEFAULTS,
+  generate: generateLapsedLoves,
+};
+
+/**
+ * Recipe registry. Keyed by `recipeKey` so generated playlists can be traced
+ * back to the recipe that built them (provenance lives in playlist_tracks per
+ * 8A.1).
  */
 export const RECIPES: Record<string, Recipe> = {
   [OBSESSIONS.key]: OBSESSIONS,
+  [LAPSED_LOVES.key]: LAPSED_LOVES,
 };
