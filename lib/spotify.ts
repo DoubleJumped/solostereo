@@ -8,10 +8,13 @@ const ME_URL = "https://api.spotify.com/v1/me";
 const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played";
 
 /**
- * Only the recently-played scope is required for the sync; email/profile let
- * us confirm and label the connected account.
+ * The recently-played scope drives the sync; email/profile let us confirm and
+ * label the connected account. The two `playlist-modify-*` scopes (task 8C) are
+ * required to create/update playlists on the owner's real account — granting
+ * them needs a reconnect, since the originally-connected account is read-only.
  */
-export const SPOTIFY_SCOPES = "user-read-recently-played user-read-email";
+export const SPOTIFY_SCOPES =
+  "user-read-recently-played user-read-email playlist-modify-public playlist-modify-private";
 
 /** Rows synced from the API are tagged with this source filename. */
 export const API_SOURCE = "spotify-api";
@@ -55,6 +58,20 @@ export function getAccount(): SpotifyAccount | null {
     .get() as SpotifyAccount | undefined;
   db.close();
   return row ?? null;
+}
+
+/**
+ * True iff the account exists and its granted scope string contains BOTH
+ * playlist-modify scopes. The read-only account connected before task 8C will
+ * return false here, prompting a reconnect.
+ */
+export function hasPlaylistScopes(account: SpotifyAccount | null): boolean {
+  if (!account || !account.scope) return false;
+  const scopes = account.scope.split(/\s+/);
+  return (
+    scopes.includes("playlist-modify-public") &&
+    scopes.includes("playlist-modify-private")
+  );
 }
 
 export function disconnectAccount(): void {
@@ -327,4 +344,149 @@ export async function syncRecentlyPlayed(): Promise<SyncResult> {
     skipped: items.length - inserted,
     newestPlayedAt: newest,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Pushing a finished playlist to the owner's real account (task 8C)
+//
+// These write to Spotify, so they need the playlist-modify scopes. Each
+// resolves the config + account (throwing clear Errors when missing) and uses
+// the same valid-access-token path as the sync. API errors throw with status +
+// body text, matching the `recently-played failed: …` convention above.
+// ---------------------------------------------------------------------------
+
+const API_BASE = "https://api.spotify.com/v1";
+
+/** The max number of track uris Spotify accepts per add/replace request. */
+const MAX_URIS_PER_REQUEST = 100;
+
+/**
+ * Resolve a valid access token for a push, asserting the app is configured, an
+ * account is connected, and it carries the playlist-modify scopes. Returns the
+ * token alongside the account (callers need `account_id` to create playlists).
+ */
+async function getPushContext(): Promise<{
+  token: string;
+  account: SpotifyAccount;
+}> {
+  const cfg = getSpotifyConfig();
+  if (!cfg) {
+    throw new Error(
+      "Spotify is not configured — set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET.",
+    );
+  }
+  const account = getAccount();
+  if (!account) throw new Error("Spotify is not connected yet.");
+  if (!hasPlaylistScopes(account)) {
+    throw new Error(
+      "Connected account is missing playlist permissions — reconnect Spotify.",
+    );
+  }
+  const token = await getValidAccessToken(cfg, account);
+  return { token, account };
+}
+
+/** Create a new empty playlist on the owner's account; returns its Spotify id. */
+export async function createSpotifyPlaylist(
+  name: string,
+  description: string,
+  isPublic: boolean,
+): Promise<{ id: string }> {
+  const { token, account } = await getPushContext();
+  const res = await fetch(
+    `${API_BASE}/users/${encodeURIComponent(account.account_id)}/playlists`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, description, public: isPublic }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`create playlist failed: ${res.status} ${await res.text()}`);
+  }
+  const data = (await res.json()) as { id: string };
+  return { id: data.id };
+}
+
+/**
+ * Set a playlist's tracks to exactly `uris`, in order. PUTs the first ≤100
+ * (which also clears any existing tracks, so this works for both first fill and
+ * re-push replace) then POSTs the rest in ≤100 batches. Returns the final
+ * snapshot_id. An empty `uris` clears the playlist.
+ */
+export async function replacePlaylistTracks(
+  spotifyPlaylistId: string,
+  uris: string[],
+): Promise<{ snapshotId: string | null }> {
+  const { token } = await getPushContext();
+  const url = `${API_BASE}/playlists/${encodeURIComponent(spotifyPlaylistId)}/tracks`;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  let snapshotId: string | null = null;
+
+  // PUT the first batch (≤100) — this replaces the whole tracklist.
+  const first = uris.slice(0, MAX_URIS_PER_REQUEST);
+  const putRes = await fetch(url, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ uris: first }),
+  });
+  if (!putRes.ok) {
+    throw new Error(
+      `replace tracks failed: ${putRes.status} ${await putRes.text()}`,
+    );
+  }
+  snapshotId = ((await putRes.json()) as { snapshot_id?: string }).snapshot_id ?? null;
+
+  // POST any remainder in ≤100 batches, preserving order.
+  for (let i = MAX_URIS_PER_REQUEST; i < uris.length; i += MAX_URIS_PER_REQUEST) {
+    const batch = uris.slice(i, i + MAX_URIS_PER_REQUEST);
+    const postRes = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ uris: batch }),
+    });
+    if (!postRes.ok) {
+      throw new Error(
+        `add tracks failed: ${postRes.status} ${await postRes.text()}`,
+      );
+    }
+    snapshotId =
+      ((await postRes.json()) as { snapshot_id?: string }).snapshot_id ??
+      snapshotId;
+  }
+
+  return { snapshotId };
+}
+
+/** Update an existing playlist's name/description/visibility. */
+export async function updatePlaylistDetails(
+  spotifyPlaylistId: string,
+  name: string,
+  description: string,
+  isPublic: boolean,
+): Promise<void> {
+  const { token } = await getPushContext();
+  const res = await fetch(
+    `${API_BASE}/playlists/${encodeURIComponent(spotifyPlaylistId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, description, public: isPublic }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `update playlist details failed: ${res.status} ${await res.text()}`,
+    );
+  }
 }

@@ -1,6 +1,11 @@
 import { SyncControls } from "@/components/sync/sync-controls";
 import { fmtDate, fmtInt } from "@/lib/format";
-import { getAccount, getSpotifyConfig, getSyncStats } from "@/lib/spotify";
+import {
+  getAccount,
+  getSpotifyConfig,
+  getSyncStats,
+  hasPlaylistScopes,
+} from "@/lib/spotify";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +119,15 @@ export default async function SyncPage({
             />
             <Field label="connected" value={fmtDate(account.connected_at)} />
           </dl>
+          {!hasPlaylistScopes(account) && (
+            <p className="rounded-md border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-foreground">
+              playlist push needs extra permission.{" "}
+              <a href="/api/spotify/login" className="text-primary underline">
+                reconnect spotify
+              </a>{" "}
+              to grant it.
+            </p>
+          )}
           <SyncControls />
           <p className="max-w-xl text-xs text-muted-foreground">
             The API exposes only your last ~50 tracks, so sync often enough that

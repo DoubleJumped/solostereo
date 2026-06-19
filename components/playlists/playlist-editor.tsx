@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fmtInt } from "@/lib/format";
 import type { LocalTrack, PlaylistTrackRow } from "@/lib/playlists";
@@ -11,6 +12,8 @@ interface EditablePlaylist {
   name: string;
   description: string | null;
   public: boolean;
+  status: string;
+  spotifyPlaylistId: string | null;
 }
 
 /**
@@ -23,9 +26,11 @@ interface EditablePlaylist {
 export function PlaylistEditor({
   playlist,
   tracks,
+  includedCount,
 }: {
   playlist: EditablePlaylist;
   tracks: PlaylistTrackRow[];
+  includedCount: number;
 }) {
   const router = useRouter();
   const base = `/api/playlists/${playlist.id}`;
@@ -114,6 +119,76 @@ export function PlaylistEditor({
     if (ok) router.push("/playlists");
   }
 
+  // --- push to spotify (8C.3) --------------------------------------------
+  const alreadyPushed = playlist.status === "pushed";
+  const [pushing, setPushing] = useState(false);
+  // On success we surface the open-in-spotify url; null until pushed.
+  const [pushedUrl, setPushedUrl] = useState<string | null>(
+    alreadyPushed && playlist.spotifyPlaylistId
+      ? `https://open.spotify.com/playlist/${playlist.spotifyPlaylistId}`
+      : null,
+  );
+  // A reconnect/not-connected/not-configured message with a link to /sync.
+  const [pushNotice, setPushNotice] = useState<{
+    text: string;
+    link?: boolean;
+  } | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  async function push() {
+    if (includedCount === 0) {
+      setPushError("no included tracks to push.");
+      return;
+    }
+    const verb = alreadyPushed ? "update" : "push";
+    if (
+      !confirm(
+        `${verb} this playlist on your real spotify account? this writes ${includedCount} track${
+          includedCount === 1 ? "" : "s"
+        } to spotify.`,
+      )
+    ) {
+      return;
+    }
+    setPushing(true);
+    setPushError(null);
+    setPushNotice(null);
+    try {
+      const res = await fetch(`${base}/push`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        url?: string;
+      };
+      if (!res.ok) {
+        if (data.error === "reconnect" || data.error === "not_connected") {
+          setPushNotice({
+            text:
+              data.message ??
+              (data.error === "not_connected"
+                ? "connect spotify to push playlists."
+                : "reconnect spotify to grant playlist permissions."),
+            link: true,
+          });
+          return;
+        }
+        if (data.error === "not_configured") {
+          setPushNotice({
+            text: "spotify credentials aren’t set — add them to .env.local.",
+          });
+          return;
+        }
+        throw new Error(data.error ?? "push failed");
+      }
+      setPushedUrl(data.url ?? null);
+      router.refresh();
+    } catch (e) {
+      setPushError((e as Error).message);
+    } finally {
+      setPushing(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       {error && (
@@ -121,6 +196,65 @@ export function PlaylistEditor({
           {error}
         </p>
       )}
+
+      {/* push to spotify (8C.3) */}
+      <section className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-card p-6">
+        <h2 className="font-display text-2xl lowercase tracking-tight">
+          push to spotify
+        </h2>
+        <p className="max-w-xl text-sm text-muted-foreground">
+          {alreadyPushed
+            ? "this playlist is on spotify. pushing again replaces its tracks with the current included ones."
+            : "creates a new playlist on your real spotify account from the included tracks, in order."}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={push}
+            disabled={pushing || busy || includedCount === 0}
+            className="rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {pushing
+              ? alreadyPushed
+                ? "updating…"
+                : "pushing…"
+              : alreadyPushed
+                ? "update on spotify"
+                : "push to spotify"}
+          </button>
+          <span className="text-xs lowercase tracking-widest text-muted-foreground">
+            {fmtInt(includedCount)} included
+          </span>
+          {pushedUrl && (
+            <a
+              href={pushedUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full border border-primary/40 px-4 py-1.5 text-sm lowercase tracking-wide text-primary transition-colors hover:bg-primary/10"
+            >
+              open in spotify
+            </a>
+          )}
+        </div>
+
+        {pushError && (
+          <p className="text-sm text-destructive">{pushError}</p>
+        )}
+        {pushNotice && (
+          <p className="text-sm text-muted-foreground">
+            {pushNotice.text}
+            {pushNotice.link && (
+              <>
+                {" "}
+                <Link href="/sync" className="text-primary underline">
+                  go to sync
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        )}
+      </section>
 
       {/* details: name + description + public toggle */}
       <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6">

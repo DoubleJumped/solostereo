@@ -197,6 +197,38 @@ export function getPlaylist(id: number): PlaylistRow | null {
   return r ? { ...r, public: !!r.public } : null;
 }
 
+/**
+ * A playlist's INCLUDED tracks, ordered by position. This is what a push uses —
+ * excluded tracks are skipped entirely.
+ */
+export function getIncludedTracks(id: number): PlaylistTrackRow[] {
+  return getPlaylistTracks(id).filter((t) => t.included);
+}
+
+/**
+ * Record a successful push to Spotify (task 8C): flips status to 'pushed',
+ * stores the Spotify playlist id + snapshot id, and stamps pushed_at /
+ * updated_at to now. Used for both first push and re-push.
+ */
+export function markPushed(
+  id: number,
+  spotifyPlaylistId: string,
+  snapshotId: string | null,
+): void {
+  const ts = now();
+  db()
+    .prepare(
+      `UPDATE playlists
+         SET status = 'pushed',
+             spotify_playlist_id = ?,
+             spotify_snapshot_id = ?,
+             pushed_at = ?,
+             updated_at = ?
+       WHERE id = ?`,
+    )
+    .run(spotifyPlaylistId, snapshotId, ts, ts, id);
+}
+
 /** A playlist's tracks, ordered by position. */
 export function getPlaylistTracks(id: number): PlaylistTrackRow[] {
   const rows = db()

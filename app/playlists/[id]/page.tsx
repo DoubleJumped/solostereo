@@ -69,24 +69,17 @@ export default async function PlaylistDetailPage({
         </p>
       </section>
 
-      {/*
-        TASK 8C — "push to spotify" control goes here.
-        The editor below owns playlist/track editing only; the push action
-        (create/update the Spotify playlist from the included tracks) is out of
-        scope for 8B and should be added as its own control/section, wired to a
-        future `app/api/playlists/[id]/push/route.ts`. The playlist row already
-        carries `status`, `spotifyPlaylistId`, `spotifySnapshotId` and
-        `pushedAt` for it to read/write.
-      */}
-
       <PlaylistEditor
         playlist={{
           id: playlist.id,
           name: playlist.name,
           description: playlist.description,
           public: playlist.public,
+          status: playlist.status,
+          spotifyPlaylistId: playlist.spotifyPlaylistId,
         }}
         tracks={tracks}
+        includedCount={includedCount}
       />
     </div>
   );
