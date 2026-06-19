@@ -32,7 +32,7 @@ script exists, Phase 1 onward).
 **Current phase:** Phases 0–7 COMPLETE and live. **Phase 8 (Playlist
 generation & Spotify round-trip) in progress** — agent-orchestrated build,
 subphase by subphase.
-**Next task:** 8B.1 (/playlists gallery + nav)
+**Next task:** 8C.1 (extend OAuth scopes + reconnect prompt)
 **Blocked on:** nothing
 
 ## Progress log
@@ -86,6 +86,7 @@ subphase by subphase.
 | 2026-06-18 | 8A.3 | Lapsed loves recipe in lib/recipes.ts (SQL GROUP BY uri: lifetime meaningful plays + MAX(played_at) + representative name via ROW_NUMBER). Qualify minPlays>=8 & last heard >= lapseMonths(18) ago; score = plays * sqrt(monthsSince); perArtistCap 2, top size 40. 898 candidates at defaults. Obsessions output unchanged; tsc+lint clean. |
 | 2026-06-18 | 8A.4 | lib/playlists.ts CRUD on a writable cached connection: previewRecipe, createDraft (tx), listPlaylists/getPlaylist/getPlaylistTracks (bool coercion), rename/setPublic/setIncluded/removeTrack/reorderTracks/addTrackByUri (INSERT OR IGNORE dup)/deletePlaylist (FK cascade), searchLocalTracks (manual-add from music_listening_events). scripts/playlist-test.ts runs full lifecycle, leaves DB clean; tsc+lint clean. |
 | 2026-06-18 | 8A.G | Phase 8A gate. lib/validate.ts check 9 (playlist_tracks uris ⊆ listening_events; skips pre-migration). scripts/recipe-smoke.ts generates both recipes (obsessions 8 playlists/42 tracks, lapsedLoves 1/40), persists a draft of each, runs full validation green (check 9 vs 50 real rows, 0 orphans), deletes, baseline restored. npm run validate 11/11 PASS. listening_events unchanged 208,482; playlists table clean. **Phase 8A complete.** |
+| 2026-06-18 | 8B | Review/edit UI. /playlists gallery (recipe cards + saved list + nav entry); /playlists/new generate form (params auto from defaultParams, obsessions year/which picker, live preview) → POST /api/playlists/generate (validate, createDraft) → redirect to editor. /playlists/[id] editor + client PlaylistEditor: rename/desc, public toggle, per-track include/exclude (dimmed), dependency-free up/down reorder, debounced manual-add via /api/playlists/search, remove, delete-with-confirm. API: PATCH/DELETE playlist; POST add / PATCH reorder; PATCH include / DELETE track; GET search. Browser-verified end to end (generate obsessions 2018 → exclude → add Arctic Monkeys → reload persists 10 tracks/9 included), no console errors, desktop+mobile on-brand. Test draft deleted; validate 11/11; DB clean. **Phase 8B complete.** |
 
 ---
 
@@ -580,11 +581,11 @@ spec in the approved plan; concrete recipe definitions there.
       both recipes + persists a draft; sample outputs recorded.
 
 **Phase 8B — Review/edit UI (fully offline)**
-- [ ] **8B.1** `/playlists` gallery + saved list + nav entry (DESIGN.md).
-- [ ] **8B.2** Generate flow (params form → draft → redirect to editor).
-- [ ] **8B.3** Editor: rename, public toggle, reorder, include/exclude, remove.
-- [ ] **8B.4** Manual add via local track search.
-- [ ] **8B.G** Gate: `npm run build` + lint green, screenshots; generate→edit→save offline.
+- [x] **8B.1** `/playlists` gallery + saved list + nav entry (DESIGN.md).
+- [x] **8B.2** Generate flow (params form → draft → redirect to editor).
+- [x] **8B.3** Editor: rename, public toggle, reorder, include/exclude, remove.
+- [x] **8B.4** Manual add via local track search.
+- [x] **8B.G** Gate: `npm run build` + lint green, screenshots; generate→edit→save offline.
 
 **Phase 8C — Spotify round-trip (push)**
 - [ ] **8C.1** Extend OAuth scopes (`playlist-modify-public/private`) +
