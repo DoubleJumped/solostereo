@@ -634,10 +634,10 @@ against the real DB and the engine smoke (`scripts/recipe-preview.ts`) before
 its checkbox is ticked; `RECIPES` keeps building (`npm run build`/lint green).
 - [x] **8E.1** **Deep cuts** — per favourite artist, their 2nd/3rd/4th-best
       tracks (skip the obvious #1 hit). Owner-requested.
-- [ ] **8E.2** **Old & new** — mixed-artist set pairing each favourite artist's
+- [x] **8E.2** **Old & new** — mixed-artist set pairing each favourite artist's
       earliest-era and latest-era track (your relationship across time).
       Owner-requested.
-- [ ] **8E.3** **Gateway songs** — the first track you ever played by artists
+- [x] **8E.3** **Gateway songs** — the first track you ever played by artists
       who went on to become favourites.
 - [x] **8E.4** **One-hit obsessions** — artists where a single track dominates
       your plays of them (your personal one-hit wonders).

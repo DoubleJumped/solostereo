@@ -800,6 +800,329 @@ export const ONE_HIT_OBSESSIONS: Recipe<OneHitObsessionsParams> = {
   generate: generateOneHitObsessions,
 };
 
+export interface OldAndNewParams {
+  /** Min total meaningful plays for an artist to count as a "favourite". */
+  minArtistPlays: number;
+  /** Min distinct UTC calendar years the artist must have been active in. */
+  minArtistYears: number;
+  /** Only consider the top N favourite artists by total meaningful plays. */
+  artists: number;
+  /** A track needs this many meaningful plays to be eligible as old/new. */
+  perArtistTrackMinPlays: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const OLD_AND_NEW_DEFAULTS: OldAndNewParams = {
+  minArtistPlays: 80,
+  minArtistYears: 3,
+  artists: 20,
+  perArtistTrackMinPlays: 5,
+  size: 40,
+};
+
+/** One uri's first-play and play count for an old/new candidate. */
+interface OldNewTrackRow {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  plays: number; // this uri's meaningful plays
+  firstPlayed: string; // MIN(played_at) over the uri's meaningful plays, ISO
+  artistPlays: number; // artist's total meaningful plays
+}
+
+/**
+ * Old & new: for each favourite artist, the track I discovered earliest paired
+ * with the one I discovered most recently — my taste in that artist across time.
+ *
+ * Favourite artists clear `minArtistPlays` total meaningful plays AND were
+ * active in at least `minArtistYears` distinct UTC calendar years; only the top
+ * `artists` by total plays are considered. Within each artist we look at tracks
+ * (by `spotify_track_uri`) with at least `perArtistTrackMinPlays` meaningful
+ * plays and use each uri's first-play time (`MIN(played_at)`) to pick the "old"
+ * track (earliest first-play) and the "new" track (latest first-play). If both
+ * resolve to the same uri the artist contributes that one track once. The
+ * playlist interleaves per artist — [A-old, A-new, B-old, B-new, …] — so each
+ * pair sits together, with artists ordered by total plays desc, capped at
+ * `size`. `score` is the artist's total plays so the biggest artists lead.
+ * Names are chosen per uri in SQL. UTC, meaningful plays only.
+ */
+function generateOldAndNew(params: OldAndNewParams): GeneratedPlaylist[] {
+  const { minArtistPlays, minArtistYears, artists, perArtistTrackMinPlays, size } =
+    params;
+
+  // Per-uri meaningful-play aggregate with first-play time, restricted to
+  // favourite artists (total plays + distinct active years), plus the artist's
+  // total plays. Representative names per uri chosen by play count in SQL.
+  const rows = db()
+    .prepare(
+      `WITH plays AS (
+         SELECT spotify_track_uri AS uri,
+                artist_name,
+                track_name,
+                album_name,
+                played_at
+         FROM music_listening_events
+         WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+           AND artist_name IS NOT NULL
+       ),
+       artist_totals AS (
+         SELECT artist_name, COUNT(*) AS artistPlays
+         FROM plays
+         GROUP BY artist_name
+         HAVING COUNT(*) >= ?
+            AND COUNT(DISTINCT strftime('%Y', played_at)) >= ?
+         ORDER BY artistPlays DESC
+         LIMIT ?
+       ),
+       uri_agg AS (
+         SELECT p.uri,
+                p.artist_name,
+                COUNT(*)       AS plays,
+                MIN(p.played_at) AS firstPlayed
+         FROM plays p
+         JOIN artist_totals a ON a.artist_name = p.artist_name
+         GROUP BY p.uri
+         HAVING COUNT(*) >= ?
+       ),
+       names AS (
+         SELECT uri, artist_name, track_name, album_name,
+                ROW_NUMBER() OVER (
+                  PARTITION BY uri
+                  ORDER BY COUNT(*) DESC, MAX(played_at) DESC
+                ) AS rn
+         FROM plays
+         GROUP BY uri, artist_name, track_name, album_name
+       )
+       SELECT uri_agg.uri          AS uri,
+              names.artist_name    AS artist,
+              names.track_name     AS track,
+              names.album_name     AS album,
+              uri_agg.plays        AS plays,
+              uri_agg.firstPlayed  AS firstPlayed,
+              artist_totals.artistPlays AS artistPlays
+       FROM uri_agg
+       JOIN names ON names.uri = uri_agg.uri AND names.rn = 1
+       JOIN artist_totals ON artist_totals.artist_name = uri_agg.artist_name
+       ORDER BY artist_totals.artistPlays DESC, uri_agg.firstPlayed`,
+    )
+    .all(minArtistPlays, minArtistYears, artists, perArtistTrackMinPlays) as OldNewTrackRow[];
+
+  // Group eligible tracks by artist, preserving the artist-plays-desc order.
+  const byArtist = new Map<string, OldNewTrackRow[]>();
+  const artistPlays = new Map<string, number>();
+  for (const r of rows) {
+    const key = r.artist ?? "";
+    if (!byArtist.has(key)) byArtist.set(key, []);
+    byArtist.get(key)!.push(r);
+    artistPlays.set(key, r.artistPlays);
+  }
+
+  // Artists ordered by total plays desc (biggest lead the interleave).
+  const orderedArtists = [...byArtist.keys()].sort(
+    (a, b) => (artistPlays.get(b) ?? 0) - (artistPlays.get(a) ?? 0),
+  );
+
+  const tracks: CandidateTrack[] = [];
+  for (const key of orderedArtists) {
+    const candidates = byArtist.get(key)!;
+    // Earliest first-play = "old", latest first-play = "new".
+    let old = candidates[0];
+    let recent = candidates[0];
+    for (const c of candidates) {
+      if (c.firstPlayed < old.firstPlayed) old = c;
+      if (c.firstPlayed > recent.firstPlayed) recent = c;
+    }
+
+    tracks.push({
+      uri: old.uri,
+      artist: old.artist,
+      track: old.track,
+      album: old.album,
+      score: old.artistPlays,
+      reason: `earliest ${old.artist ?? "?"} track you kept — first played ${monthYearLabel(old.firstPlayed)}`,
+    });
+    // Same uri (artist effectively has one qualifying track) → include once.
+    if (recent.uri !== old.uri) {
+      tracks.push({
+        uri: recent.uri,
+        artist: recent.artist,
+        track: recent.track,
+        album: recent.album,
+        score: recent.artistPlays,
+        reason: `newest ${recent.artist ?? "?"} track you took to — first played ${monthYearLabel(recent.firstPlayed)}`,
+      });
+    }
+  }
+
+  return [
+    {
+      name: "Old & new",
+      description:
+        `For my favourite artists (${minArtistPlays}+ plays across ${minArtistYears}+ years), ` +
+        `the track I discovered earliest paired with the one I found most recently — ` +
+        `my taste in each artist across time.`,
+      recipeKey: "oldAndNew",
+      params: { ...params },
+      tracks: tracks.slice(0, size),
+    },
+  ];
+}
+
+export const OLD_AND_NEW: Recipe<OldAndNewParams> = {
+  key: "oldAndNew",
+  label: "Old & new",
+  description:
+    "For my favourite artists, the track I discovered earliest paired with the " +
+    "one I found most recently — my taste in each artist across time.",
+  defaultParams: OLD_AND_NEW_DEFAULTS,
+  generate: generateOldAndNew,
+};
+
+export interface GatewaySongsParams {
+  /** Min total meaningful plays for an artist to count as a "favourite". */
+  minArtistPlays: number;
+  /** Only consider the top N favourite artists by total meaningful plays. */
+  artists: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const GATEWAY_SONGS_DEFAULTS: GatewaySongsParams = {
+  minArtistPlays: 80,
+  artists: 40,
+  size: 40,
+};
+
+/** One artist's gateway track (their first-ever played) from the aggregate. */
+interface GatewayRow {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  gatewayPlayed: string; // the artist's earliest single meaningful played_at
+  artistPlays: number; // artist's total meaningful plays
+}
+
+/**
+ * Gateway songs: the very first track I ever played by each artist who went on
+ * to become a favourite — the song that started it.
+ *
+ * Favourite artists clear `minArtistPlays` total meaningful plays; only the top
+ * `artists` by that total are considered. For each, the gateway track is the
+ * uri carrying the artist's earliest single meaningful `played_at` (the first
+ * thing I actually played by them), tie-broken by that play's timestamp then by
+ * the uri's plays desc. One track per artist, ordered by the gateway date
+ * ascending — a chronological tour of how my favourites entered my life —
+ * capped at `size`. `score` is the artist's total plays. Names are chosen per
+ * uri in SQL. UTC, meaningful plays only.
+ */
+function generateGatewaySongs(params: GatewaySongsParams): GeneratedPlaylist[] {
+  const { minArtistPlays, artists, size } = params;
+
+  // Per favourite artist, the uri whose earliest meaningful play is the
+  // earliest of any of the artist's tracks. We rank each uri's first-play time
+  // within the artist and keep rank 1; ties break by plays desc.
+  const rows = db()
+    .prepare(
+      `WITH plays AS (
+         SELECT spotify_track_uri AS uri,
+                artist_name,
+                track_name,
+                album_name,
+                played_at
+         FROM music_listening_events
+         WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+           AND artist_name IS NOT NULL
+       ),
+       artist_totals AS (
+         SELECT artist_name, COUNT(*) AS artistPlays
+         FROM plays
+         GROUP BY artist_name
+         HAVING COUNT(*) >= ?
+         ORDER BY artistPlays DESC
+         LIMIT ?
+       ),
+       uri_agg AS (
+         SELECT p.uri,
+                p.artist_name,
+                COUNT(*)         AS plays,
+                MIN(p.played_at) AS firstPlayed
+         FROM plays p
+         JOIN artist_totals a ON a.artist_name = p.artist_name
+         GROUP BY p.uri
+       ),
+       ranked AS (
+         SELECT uri,
+                artist_name,
+                firstPlayed,
+                ROW_NUMBER() OVER (
+                  PARTITION BY artist_name
+                  ORDER BY firstPlayed, plays DESC, uri
+                ) AS rank
+         FROM uri_agg
+       ),
+       names AS (
+         SELECT uri, artist_name, track_name, album_name,
+                ROW_NUMBER() OVER (
+                  PARTITION BY uri
+                  ORDER BY COUNT(*) DESC, MAX(played_at) DESC
+                ) AS rn
+         FROM plays
+         GROUP BY uri, artist_name, track_name, album_name
+       )
+       SELECT ranked.uri          AS uri,
+              names.artist_name   AS artist,
+              names.track_name    AS track,
+              names.album_name    AS album,
+              ranked.firstPlayed  AS gatewayPlayed,
+              artist_totals.artistPlays AS artistPlays
+       FROM ranked
+       JOIN names ON names.uri = ranked.uri AND names.rn = 1
+       JOIN artist_totals ON artist_totals.artist_name = ranked.artist_name
+       WHERE ranked.rank = 1
+       ORDER BY ranked.firstPlayed`,
+    )
+    .all(minArtistPlays, artists) as GatewayRow[];
+
+  const tracks: CandidateTrack[] = rows.slice(0, size).map((r) => ({
+    uri: r.uri,
+    artist: r.artist,
+    track: r.track,
+    album: r.album,
+    score: r.artistPlays,
+    reason: `the first ${r.artist ?? "?"} song you played — ${monthYearLabel(r.gatewayPlayed)}`,
+  }));
+
+  return [
+    {
+      name: "Gateway songs",
+      description:
+        `The very first track I ever played by each of my favourite artists ` +
+        `(${minArtistPlays}+ plays) — the song that started it, in the order ` +
+        `they entered my life.`,
+      recipeKey: "gatewaySongs",
+      params: { ...params },
+      tracks,
+    },
+  ];
+}
+
+export const GATEWAY_SONGS: Recipe<GatewaySongsParams> = {
+  key: "gatewaySongs",
+  label: "Gateway songs",
+  description:
+    "The first track I ever played by each artist who went on to become a " +
+    "favourite — the song that started it.",
+  defaultParams: GATEWAY_SONGS_DEFAULTS,
+  generate: generateGatewaySongs,
+};
+
 /**
  * Recipe registry. Keyed by `recipeKey` so generated playlists can be traced
  * back to the recipe that built them (provenance lives in playlist_tracks per
@@ -810,4 +1133,6 @@ export const RECIPES: Record<string, Recipe> = {
   [LAPSED_LOVES.key]: LAPSED_LOVES,
   [DEEP_CUTS.key]: DEEP_CUTS,
   [ONE_HIT_OBSESSIONS.key]: ONE_HIT_OBSESSIONS,
+  [OLD_AND_NEW.key]: OLD_AND_NEW,
+  [GATEWAY_SONGS.key]: GATEWAY_SONGS,
 };
