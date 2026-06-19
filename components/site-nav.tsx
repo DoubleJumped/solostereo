@@ -10,6 +10,7 @@ const pages = [
   { href: "/year", label: "year in review" },
   { href: "/artists", label: "artists" },
   { href: "/compare", label: "compare" },
+  { href: "/playlists", label: "playlists" },
   { href: "/sync", label: "sync" },
 ] as const;
 
