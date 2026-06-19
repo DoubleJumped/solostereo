@@ -29,11 +29,14 @@ script exists, Phase 1 onward).
 
 ## Status
 
-**Current phase:** Phases 0–7 COMPLETE and live. **Phase 8 (Playlist
-generation & Spotify round-trip) in progress** — agent-orchestrated build,
-subphase by subphase.
-**Next task:** 8C.1 (extend OAuth scopes + reconnect prompt)
-**Blocked on:** nothing
+**Current phase:** Phase 8 (Playlist generation & Spotify round-trip).
+**8A, 8B, 8D complete; 8C code complete and verified.** The whole feature is
+built: generate Obsessions/Lapsed-loves drafts, review/edit them, push to
+Spotify (create-or-update, no duplicates). Behaviour-only; metadata deferred.
+**Next task:** 8C.G — the only remaining step is the **live push**, which
+needs the owner to **reconnect Spotify on /sync** (to grant
+`playlist-modify-public/private`) and click **push** on a playlist.
+**Blocked on:** owner reconnect + live push (OAuth consent can't be automated).
 
 ## Progress log
 
@@ -87,6 +90,8 @@ subphase by subphase.
 | 2026-06-18 | 8A.4 | lib/playlists.ts CRUD on a writable cached connection: previewRecipe, createDraft (tx), listPlaylists/getPlaylist/getPlaylistTracks (bool coercion), rename/setPublic/setIncluded/removeTrack/reorderTracks/addTrackByUri (INSERT OR IGNORE dup)/deletePlaylist (FK cascade), searchLocalTracks (manual-add from music_listening_events). scripts/playlist-test.ts runs full lifecycle, leaves DB clean; tsc+lint clean. |
 | 2026-06-18 | 8A.G | Phase 8A gate. lib/validate.ts check 9 (playlist_tracks uris ⊆ listening_events; skips pre-migration). scripts/recipe-smoke.ts generates both recipes (obsessions 8 playlists/42 tracks, lapsedLoves 1/40), persists a draft of each, runs full validation green (check 9 vs 50 real rows, 0 orphans), deletes, baseline restored. npm run validate 11/11 PASS. listening_events unchanged 208,482; playlists table clean. **Phase 8A complete.** |
 | 2026-06-18 | 8B | Review/edit UI. /playlists gallery (recipe cards + saved list + nav entry); /playlists/new generate form (params auto from defaultParams, obsessions year/which picker, live preview) → POST /api/playlists/generate (validate, createDraft) → redirect to editor. /playlists/[id] editor + client PlaylistEditor: rename/desc, public toggle, per-track include/exclude (dimmed), dependency-free up/down reorder, debounced manual-add via /api/playlists/search, remove, delete-with-confirm. API: PATCH/DELETE playlist; POST add / PATCH reorder; PATCH include / DELETE track; GET search. Browser-verified end to end (generate obsessions 2018 → exclude → add Arctic Monkeys → reload persists 10 tracks/9 included), no console errors, desktop+mobile on-brand. Test draft deleted; validate 11/11; DB clean. **Phase 8B complete.** |
+| 2026-06-18 | 8C | Spotify push round-trip. lib/spotify.ts: SPOTIFY_SCOPES += playlist-modify-public/private; hasPlaylistScopes(); createSpotifyPlaylist / replacePlaylistTracks (PUT first<=100 then POST remainder) / updatePlaylistDetails (reuse getValidAccessToken). lib/playlists.ts: getIncludedTracks + markPushed. POST /api/playlists/[id]/push: create-or-update (re-push updates same Spotify playlist, no dup), pushes included tracks in order, returns open url; 409 {error:reconnect} when account lacks scopes. Editor push/update button + reconnect/not-connected notices; /sync reconnect prompt. Browser-verified: push API 409 reconnect for the live read-only account, editor shows push button, /sync shows the reconnect notice+login link. build/lint/tsc clean. LIVE push gate (8C.G) awaits owner reconnect. |
+| 2026-06-18 | 8D | Docs. README: new "Playlists — generate, review, push" section (recipes, edit, push, one-time reconnect for write scopes), project-layout + validation (check 9) updates. docs/metadata-sources-research.md referenced; metadata enrichment stays a separate future decision. plan.md Status/Progress updated; 9/10 candidate sections renumbered earlier. |
 
 ---
 
@@ -588,18 +593,17 @@ spec in the approved plan; concrete recipe definitions there.
 - [x] **8B.G** Gate: `npm run build` + lint green, screenshots; generate→edit→save offline.
 
 **Phase 8C — Spotify round-trip (push)**
-- [ ] **8C.1** Extend OAuth scopes (`playlist-modify-public/private`) +
+- [x] **8C.1** Extend OAuth scopes (`playlist-modify-public/private`) +
       sync-page reconnect prompt when scopes missing.
-- [ ] **8C.2** `lib/spotify.ts` create + batched add-tracks; persist Spotify
+- [x] **8C.2** `lib/spotify.ts` create + batched add-tracks; persist Spotify
       playlist id + snapshot.
-- [ ] **8C.3** Push action + confirm UI; `status='pushed'`, open-in-Spotify
+- [x] **8C.3** Push action + confirm UI; `status='pushed'`, open-in-Spotify
       link, re-push guard. Public by default (per-playlist toggle).
-- [ ] **8C.G** Gate: **live** push verified on owner's account; reconnect path
-      verified; `npm run validate` green.
+- [ ] **8C.G** Gate (AWAITING OWNER): code complete + reconnect path browser-verified (sync notice, editor push button, push API returns 409 reconnect for the read-only account). The LIVE push needs the owner to reconnect Spotify (grant playlist scopes) then click push. `npm run validate` green.
 
 **Phase 8D — Docs & close-out**
-- [ ] **8D.1** Update `README.md` + `plan.md` (Status, progress log, check off).
-- [ ] **8D.2** Reference `docs/metadata-sources-research.md`; metadata stays a
+- [x] **8D.1** Update `README.md` + `plan.md` (Status, progress log, check off).
+- [x] **8D.2** Reference `docs/metadata-sources-research.md`; metadata stays a
       future, separate decision.
 
 ### Phase 9: Enrichment and quality of life (candidates, not commitments)

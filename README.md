@@ -172,6 +172,47 @@ Any gap larger than the ~50-track window can only be backfilled by
 re-requesting the Extended Streaming History export and re-importing (the
 dedup hash merges it with synced rows, no duplicates).
 
+## Playlists — generate, review, push
+
+The **playlists** page (`/playlists`) turns your listening history into
+playlists you fully control before anything reaches Spotify: generate a draft
+from a recipe, edit it in the app, then push it to your account.
+
+**Recipes** (behaviour-only — no external metadata; see
+[docs/metadata-sources-research.md](docs/metadata-sources-research.md) for the
+deferred metadata decision):
+
+- **Obsessions** — tracks you binged over a short stretch and then abandoned:
+  a burst of plays in a rolling 30-day window that dominates the track's
+  lifetime plays, followed by a long silence. Bucketed into one playlist per
+  year ("Obsessions of 2018"). Keyed by Spotify track URI, so an abandoned
+  version of a song is treated separately from a re-release you still play.
+- **Lapsed loves** — tracks you played heavily long ago but haven't heard in
+  18+ months. Ranked by lifetime plays weighted by how long they've been gone.
+
+Every threshold (burst size, concentration, quiet window, size, per-artist
+cap, …) is a tunable parameter on the generate form, with a live preview of
+what the current settings would build.
+
+**Review & edit.** A generated draft is saved locally (in the `playlists` /
+`playlist_tracks` tables — your raw history is never touched). The editor lets
+you rename it, set public/private, reorder tracks, exclude tracks (kept but
+greyed out, not deleted), remove tracks, and add any track from your own
+listening catalogue via search. Nothing is sent to Spotify until you press
+**push**.
+
+**Push to Spotify.** Pushing creates a playlist on your account (public by
+default; toggle per-playlist) and adds your included tracks in order. Pushing
+again *updates the same playlist* rather than creating a duplicate.
+
+> **One-time reconnect.** The original sync connection only requested
+> read-only access. Pushing playlists needs the `playlist-modify-public` and
+> `playlist-modify-private` scopes, so the first time you'll see a "playlist
+> push needs extra permission — reconnect spotify" notice on `/sync` (and on
+> the playlist's push button). Click **reconnect spotify**, approve the new
+> permissions, and the push button works from then on. Reconnecting keeps your
+> synced history; it only adds the write scopes.
+
 ## Stack and rationale
 
 - **Next.js (App Router) + TypeScript**, Tailwind CSS v4 + shadcn/ui restyled
@@ -217,12 +258,15 @@ dedup hash merges it with synced rows, no duplicates).
 ## Project layout
 
 ```
-app/              Next.js App Router pages (overview, year, artists, compare)
+app/              Next.js App Router pages (overview, year, artists, compare,
+                  playlists) and route handlers under app/api/
 components/       bespoke components; components/ui/ is shadcn-generated
 db/migrations/    plain SQL migrations, applied in filename order
-lib/              shared code (db connection, query layer)
-scripts/          migrate / import / validate CLI scripts
+lib/              shared code: db connection, query layer (queries.ts),
+                  playlist recipes (recipes.ts), playlist CRUD (playlists.ts)
+scripts/          migrate / import / validate / recipe-preview / smoke CLI scripts
 data/             SQLite db + raw export (gitignored — personal data)
+docs/             screenshots + metadata-sources research
 plan.md           project plan and single source of truth for status
 DESIGN.md         binding design system
 ```
@@ -232,5 +276,7 @@ DESIGN.md         binding design system
 `npm run validate` (from Phase 1) runs every data-quality check against the
 live database and exits non-zero on any failure — importer idempotency,
 no negative `ms_played`, yearly totals reconciling to all-time totals,
-summary views reconciling to raw events, and podcast/audiobook exclusion
-from music views. It is the mechanical definition of done for data tasks.
+summary views reconciling to raw events, podcast/audiobook exclusion
+from music views, and (check 9) that every track in a generated playlist
+references a real event in `listening_events`. It is the mechanical
+definition of done for data tasks.
