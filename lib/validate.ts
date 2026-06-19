@@ -23,6 +23,14 @@ function viewExists(db: Database.Database, name: string): boolean {
   );
 }
 
+function tableExists(db: Database.Database, name: string): boolean {
+  return (
+    db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(name) !== undefined
+  );
+}
+
 export function runValidation(db: Database.Database): CheckResult[] {
   const results: CheckResult[] = [];
   const one = <T>(sql: string) => db.prepare(sql).get() as T;
@@ -267,6 +275,32 @@ export function runValidation(db: Database.Database): CheckResult[] {
         mismatches.length === 0
           ? `checked: ${top3.map((a) => a.artist_name).join(", ")}`
           : `mismatch: ${mismatches.join(", ")}`,
+    });
+  }
+
+  // 9. Playlist integrity (Phase 8): every playlist track references a real
+  // Spotify track URI present in listening_events, so generated/edited
+  // playlists can never contain tracks we don't actually have. Skips until
+  // the playlist tables exist (migration 005).
+  if (tableExists(db, "playlist_tracks")) {
+    const r = one<{ tracks: number; orphans: number }>(
+      `SELECT COUNT(*) AS tracks,
+              SUM(CASE WHEN NOT EXISTS (
+                    SELECT 1 FROM listening_events e
+                    WHERE e.spotify_track_uri = pt.spotify_track_uri
+                  ) THEN 1 ELSE 0 END) AS orphans
+       FROM playlist_tracks pt`,
+    );
+    results.push({
+      name: "9 playlist tracks reference real listening events",
+      status: (r.orphans ?? 0) === 0 ? "pass" : "fail",
+      detail: `${r.tracks} playlist track(s), ${r.orphans ?? 0} orphan uri(s)`,
+    });
+  } else {
+    results.push({
+      name: "9 playlist tracks reference real listening events",
+      status: "skip",
+      detail: "playlist_tracks table not present yet (Phase 8)",
     });
   }
 
