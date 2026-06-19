@@ -32,7 +32,7 @@ script exists, Phase 1 onward).
 **Current phase:** Phases 0–7 COMPLETE and live. **Phase 8 (Playlist
 generation & Spotify round-trip) in progress** — agent-orchestrated build,
 subphase by subphase.
-**Next task:** 8A.3 (Lapsed loves generator)
+**Next task:** 8A.4 (playlist CRUD lib)
 **Blocked on:** nothing
 
 ## Progress log
@@ -83,6 +83,7 @@ subphase by subphase.
 | 2026-06-18 | 8.plan | Phase 8 (playlists) opened: approved plan folded into §10 as 8A–8D checklist; prior candidate sections renumbered 9/10. docs/metadata-sources-research.md added (free-source survey; decision deferred — Spotify audio-features dead for this app, layered free pipeline recommended). Branch phase-8-playlists. |
 | 2026-06-18 | 8A.1 | Migration 005: playlists + playlist_tracks (draft/pushed lifecycle, recipe_key/params_json provenance, ordered tracks, FK ON DELETE CASCADE — foreign_keys pragma confirmed ON in lib/db.ts, included flag for exclude-without-delete, UNIQUE(playlist_id,uri)). migrate idempotent; listening_events unchanged (208,482). |
 | 2026-06-18 | 8A.2 | lib/recipes.ts: recipe engine (Recipe/CandidateTrack/GeneratedPlaylist + RECIPES registry, read-only query_only conn) + Obsessions generator. Densest 30-day window per spotify_track_uri (two-pointer), qualifies burst-then-quiet (minBurst 6 / minBurstDays 3 / concentration 0.6 / quietMonths 12), buckets by peak-window year. scripts/recipe-preview.ts spot-check. Defaults: 8 years / 42 tracks; per-URI keying isolates abandoned vs re-released same-name tracks. tsc+lint clean. |
+| 2026-06-18 | 8A.3 | Lapsed loves recipe in lib/recipes.ts (SQL GROUP BY uri: lifetime meaningful plays + MAX(played_at) + representative name via ROW_NUMBER). Qualify minPlays>=8 & last heard >= lapseMonths(18) ago; score = plays * sqrt(monthsSince); perArtistCap 2, top size 40. 898 candidates at defaults. Obsessions output unchanged; tsc+lint clean. |
 
 ---
 
@@ -570,7 +571,7 @@ spec in the approved plan; concrete recipe definitions there.
       `UNIQUE(playlist_id, spotify_track_uri)`). `npm run migrate` idempotent.
 - [x] **8A.2** `lib/recipes.ts` registry + **Obsessions** generator
       (rolling-30d burst, tunable params); scratch script, numbers spot-checked.
-- [ ] **8A.3** **Lapsed loves** generator; sample output spot-checked.
+- [x] **8A.3** **Lapsed loves** generator; sample output spot-checked.
 - [ ] **8A.4** `lib/playlists.ts` CRUD + `searchLocalTracks` (writable conn);
       script: generate → persist draft → edit → read back.
 - [ ] **8A.G** Gate: `npm run validate` green (new checks); CLI smoke builds
