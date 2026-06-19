@@ -35,7 +35,7 @@ built: generate Obsessions/Lapsed-loves drafts, review/edit them, push to
 Spotify (create-or-update, no duplicates). Behaviour-only; metadata deferred.
 
 **Next task:** Phase 8 fully built (8A–8E). Only owner-gated live push (8C.G)
-remains for a future session. Recipe library now has **9 recipes**.
+remains for a future session. Recipe library now has **11 recipes** (gallery renders all).
 
 ### ▶ Phase 8 status — build complete; live push deferred by owner
 
@@ -114,6 +114,7 @@ float artifact (displays `0.6`, raw `0.60000002`) — cosmetic. Fix in
 | 2026-06-18 | 8D | Docs. README: new "Playlists — generate, review, push" section (recipes, edit, push, one-time reconnect for write scopes), project-layout + validation (check 9) updates. docs/metadata-sources-research.md referenced; metadata enrichment stays a separate future decision. plan.md Status/Progress updated; 9/10 candidate sections renumbered earlier. |
 | 2026-06-18 | 8.close | Phase 8 build complete; live push (8C.G) deferred to a future session by owner. Plan finalized, branch pushed to origin. Added Phase 8E checklist — experimental behaviour-only recipes (deep cuts, old & new, gateway songs, one-hit obsessions, seasonal, faithful favourites, sleeper hits) to expand the recipe library. |
 | 2026-06-18 | 8E | Experimental recipes — recipe library expanded from 2 to 9 (all behaviour-only, in lib/recipes.ts, auto-listed in /playlists gallery). Added: deepCuts (2nd/3rd/4th-best per favourite artist), oneHitObsessions (one track dominates an artist you played 3+ songs by), oldAndNew (earliest+latest-discovered track per artist, interleaved), gatewaySongs (first track ever played by each favourite), seasonal (4 per-season playlists by play concentration), faithfulFavourites (played across many calendar years), sleeperHits (long gap from first play to peak). Each spot-checked vs DB; gallery renders all 9; deepCuts verified end-to-end through UI; build/lint/validate(11/11) green; DB clean. Branch pushed to origin. |
+| 2026-06-18 | 8E.8-9 | Two more creative recipes (library now 11): comebackKids (2+ listening stretches split by a >6mo gap — Frank Turner "Get Better" 2017/2021/2024) and timeCapsule (today-relative: tracks played within +/-10 days of today's date in prior years — Despacito 2017/18/23; date-relative output by design). Spot-checked; 11 recipes registered; build/validate green; existing recipes unchanged; pushed. |
 
 ---
 
@@ -652,6 +653,12 @@ its checkbox is ticked; `RECIPES` keeps building (`npm run build`/lint green).
 - [x] **8E.G** Gate: 9 recipes registered; gallery renders all 9 with working
       generate links; deepCuts verified end-to-end through the UI; samples
       spot-checked; `npm run build`/lint/validate (11/11) green; DB clean; pushed.
+- [x] **8E.8** **Comeback kids** — tracks that died then revived: 2+ separate
+      listening clusters split by a long quiet gap.
+- [x] **8E.9** **Time capsule** — tracks you played heavily this same calendar
+      week in past years (today-relative nostalgia).
+- [x] **8E.G2** Gate: both produce sensible samples; gallery renders 11; build/
+      lint/validate green; committed + pushed.
 
 ### Phase 9: Enrichment and quality of life (candidates, not commitments)
 

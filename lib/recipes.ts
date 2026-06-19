@@ -1563,6 +1563,351 @@ export const SLEEPER_HITS: Recipe<SleeperHitsParams> = {
   generate: generateSleeperHits,
 };
 
+export interface ComebackKidsParams {
+  /** Min lifetime meaningful plays for a track to be considered. */
+  minPlays: number;
+  /** A gap longer than this (in ~30.44-day months) starts a new cluster. */
+  gapMonths: number;
+  /** Min plays a cluster needs to count as a real listening stretch. */
+  minClusterPlays: number;
+  /** Min qualifying clusters the track needs (distinct revivals). */
+  minClusters: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  /** Max tracks from any one artist. */
+  perArtistCap: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const COMEBACK_KIDS_DEFAULTS: ComebackKidsParams = {
+  minPlays: 12,
+  gapMonths: 6,
+  minClusterPlays: 4,
+  minClusters: 2,
+  size: 40,
+  perArtistCap: 3,
+};
+
+interface ComebackQualifier {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  clusterYears: number[]; // UTC year of each qualifying cluster's first play
+  clusterCount: number; // number of qualifying clusters
+  plays: number; // lifetime meaningful plays
+  score: number;
+}
+
+/**
+ * Comeback kids: tracks that died, then I revived them — multiple distinct
+ * listening stretches separated by long silences.
+ *
+ * Reusing the ordered-scan + consecutive-by-uri grouping from Obsessions, for
+ * each track (by `spotify_track_uri`) clearing `minPlays` meaningful plays we
+ * walk its sorted plays and split them into **clusters**, starting a new
+ * cluster whenever the gap to the previous play exceeds `gapMonths` (converted
+ * to ms via ~30.44-day months). Clusters with at least `minClusterPlays` plays
+ * count as real listening stretches; the track qualifies when it has at least
+ * `minClusters` such stretches. Scored by `qualifyingClusters * plays` (more
+ * revivals and more total play lead), ranked desc with a per-artist cap, capped
+ * at `size`, as a single playlist. UTC throughout.
+ */
+function generateComebackKids(params: ComebackKidsParams): GeneratedPlaylist[] {
+  const { minPlays, gapMonths, minClusterPlays, minClusters, size, perArtistCap } =
+    params;
+
+  // ~30.44-day months → ms, for splitting plays into time-separated clusters.
+  const gapMs = gapMonths * 30.44 * DAY_MS;
+
+  const rows = db()
+    .prepare(
+      `SELECT spotify_track_uri AS uri,
+              played_at,
+              artist_name,
+              track_name,
+              album_name
+       FROM music_listening_events
+       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ORDER BY spotify_track_uri, played_at`,
+    )
+    .all() as PlayRow[];
+
+  const qualifiers: ComebackQualifier[] = [];
+
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    const uri = rows[start].uri;
+    while (end < rows.length && rows[end].uri === uri) end++;
+    const group = rows.slice(start, end);
+    start = end;
+
+    if (group.length < minPlays) continue;
+
+    const times = group.map((r) => new Date(r.played_at).getTime());
+
+    // Split the sorted plays into clusters; a gap > gapMs starts a new one.
+    // Track each cluster's play count and its first play's ISO timestamp.
+    const clusterCounts: number[] = [];
+    const clusterFirstIso: string[] = [];
+    let curCount = 0;
+    let curFirstIso = "";
+    for (let i = 0; i < group.length; i++) {
+      if (i === 0 || times[i] - times[i - 1] > gapMs) {
+        if (curCount > 0) {
+          clusterCounts.push(curCount);
+          clusterFirstIso.push(curFirstIso);
+        }
+        curCount = 0;
+        curFirstIso = group[i].played_at;
+      }
+      curCount++;
+    }
+    if (curCount > 0) {
+      clusterCounts.push(curCount);
+      clusterFirstIso.push(curFirstIso);
+    }
+
+    // Keep only clusters that are real listening stretches.
+    const clusterYears: number[] = [];
+    for (let i = 0; i < clusterCounts.length; i++) {
+      if (clusterCounts[i] >= minClusterPlays) {
+        clusterYears.push(utcYear(clusterFirstIso[i]));
+      }
+    }
+    if (clusterYears.length < minClusters) continue;
+
+    const display = pickDisplay(group);
+    qualifiers.push({
+      uri,
+      artist: display.artist,
+      track: display.track,
+      album: display.album,
+      clusterYears,
+      clusterCount: clusterYears.length,
+      plays: group.length,
+      score: clusterYears.length * group.length,
+    });
+  }
+
+  qualifiers.sort((a, b) => b.score - a.score);
+
+  const perArtist = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const q of qualifiers) {
+    if (picked.length >= size) break;
+    const artistKey = q.artist ?? "";
+    const used = perArtist.get(artistKey) ?? 0;
+    if (used >= perArtistCap) continue;
+    perArtist.set(artistKey, used + 1);
+
+    // List each stretch's year; collapse to first–last when there are many.
+    const years = q.clusterYears;
+    const yearList =
+      years.length <= 3
+        ? years.join(", ")
+        : `${years[0]}–${years[years.length - 1]}`;
+    const reason =
+      years.length <= 3
+        ? `played in ${q.clusterCount} stretches: ${yearList}`
+        : `${q.clusterCount} stretches, ${yearList}`;
+
+    picked.push({
+      uri: q.uri,
+      artist: q.artist,
+      track: q.track,
+      album: q.album,
+      score: q.score,
+      reason,
+    });
+  }
+
+  return [
+    {
+      name: "Comeback kids",
+      description:
+        `Tracks I played (${minPlays}+ times), set aside, then came back to — ` +
+        `${minClusters}+ separate listening stretches of ${minClusterPlays}+ plays, ` +
+        `split by ${gapMonths}+ month silences.`,
+      recipeKey: "comebackKids",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const COMEBACK_KIDS: Recipe<ComebackKidsParams> = {
+  key: "comebackKids",
+  label: "Comeback kids",
+  description:
+    "Tracks that died, then I revived them — multiple distinct listening " +
+    "stretches separated by long silences.",
+  defaultParams: COMEBACK_KIDS_DEFAULTS,
+  generate: generateComebackKids,
+};
+
+export interface TimeCapsuleParams {
+  /** Half-width (in days) of the day-of-year window around today. */
+  windowDays: number;
+  /** Min in-window plays (across past years) for a track to qualify. */
+  minPlaysInWindow: number;
+  /** Max tracks in the generated playlist. */
+  size: number;
+  /** Max tracks from any one artist. */
+  perArtistCap: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const TIME_CAPSULE_DEFAULTS: TimeCapsuleParams = {
+  windowDays: 10,
+  minPlaysInWindow: 4,
+  size: 40,
+  perArtistCap: 3,
+};
+
+interface TimeCapsuleQualifier {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  windowPlays: number; // in-window plays across past years
+  years: number[]; // distinct past years with an in-window play
+  score: number;
+}
+
+/** Day-of-year (1..366) of an ISO timestamp, in UTC. */
+function utcDayOfYear(iso: string): number {
+  const d = new Date(iso);
+  const startOfYear = Date.UTC(d.getUTCFullYear(), 0, 1);
+  return Math.floor((d.getTime() - startOfYear) / DAY_MS) + 1;
+}
+
+/**
+ * Time capsule: what I was playing THIS time of year in years past —
+ * today-relative nostalgia.
+ *
+ * NOTE: this recipe is date-relative — its output changes with today's date
+ * (`new Date()`, UTC). That's intended: it surfaces tracks tied to the current
+ * calendar week across previous years.
+ *
+ * From one ordered scan of meaningful plays, for each play in a year strictly
+ * before the current year we test whether its day-of-year is within
+ * `windowDays` of today's, using the min of the direct and wrapped (365 − d)
+ * distances so the window straddles the Dec→Jan boundary. Per track (by
+ * `spotify_track_uri`) we count such in-window plays and collect the distinct
+ * past years they fell in. A track qualifies when its in-window plays reach
+ * `minPlaysInWindow`. Scored by in-window plays, ranked desc with a per-artist
+ * cap, capped at `size`, as a single playlist. UTC throughout.
+ */
+function generateTimeCapsule(params: TimeCapsuleParams): GeneratedPlaylist[] {
+  const { windowDays, minPlaysInWindow, size, perArtistCap } = params;
+
+  const today = new Date();
+  const currentYear = today.getUTCFullYear();
+  const todayDoy = utcDayOfYear(today.toISOString());
+  const todayLabel = today.toLocaleString("en-US", {
+    month: "long",
+    timeZone: "UTC",
+  });
+
+  const rows = db()
+    .prepare(
+      `SELECT spotify_track_uri AS uri,
+              played_at,
+              artist_name,
+              track_name,
+              album_name
+       FROM music_listening_events
+       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ORDER BY spotify_track_uri, played_at`,
+    )
+    .all() as PlayRow[];
+
+  const qualifiers: TimeCapsuleQualifier[] = [];
+
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    const uri = rows[start].uri;
+    while (end < rows.length && rows[end].uri === uri) end++;
+    const group = rows.slice(start, end);
+    start = end;
+
+    let windowPlays = 0;
+    const years = new Set<number>();
+    for (const r of group) {
+      const y = utcYear(r.played_at);
+      if (y >= currentYear) continue; // only years strictly before this one
+      const doy = utcDayOfYear(r.played_at);
+      const direct = Math.abs(doy - todayDoy);
+      const dist = Math.min(direct, 365 - direct); // wrap across Dec→Jan
+      if (dist <= windowDays) {
+        windowPlays++;
+        years.add(y);
+      }
+    }
+
+    if (windowPlays < minPlaysInWindow) continue;
+
+    const display = pickDisplay(group);
+    qualifiers.push({
+      uri,
+      artist: display.artist,
+      track: display.track,
+      album: display.album,
+      windowPlays,
+      years: [...years].sort((a, b) => a - b),
+      score: windowPlays,
+    });
+  }
+
+  qualifiers.sort((a, b) => b.score - a.score);
+
+  const perArtist = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const q of qualifiers) {
+    if (picked.length >= size) break;
+    const artistKey = q.artist ?? "";
+    const used = perArtist.get(artistKey) ?? 0;
+    if (used >= perArtistCap) continue;
+    perArtist.set(artistKey, used + 1);
+    picked.push({
+      uri: q.uri,
+      artist: q.artist,
+      track: q.track,
+      album: q.album,
+      score: q.score,
+      reason: `you played this around mid-${todayLabel} in ${q.years.join(", ")}`,
+    });
+  }
+
+  return [
+    {
+      name: "Time capsule: this week, years past",
+      description:
+        `What I was playing around this time of year (±${windowDays} days) in ` +
+        `years past — tracks with ${minPlaysInWindow}+ plays in that window ` +
+        `across previous years. Changes day to day.`,
+      recipeKey: "timeCapsule",
+      params: { ...params },
+      tracks: picked,
+    },
+  ];
+}
+
+export const TIME_CAPSULE: Recipe<TimeCapsuleParams> = {
+  key: "timeCapsule",
+  label: "Time capsule: this week, years past",
+  description:
+    "What I was playing this same time of year in years past — " +
+    "today-relative nostalgia (its output changes day to day).",
+  defaultParams: TIME_CAPSULE_DEFAULTS,
+  generate: generateTimeCapsule,
+};
+
 /**
  * Recipe registry. Keyed by `recipeKey` so generated playlists can be traced
  * back to the recipe that built them (provenance lives in playlist_tracks per
@@ -1578,4 +1923,6 @@ export const RECIPES: Record<string, Recipe> = {
   [SEASONAL.key]: SEASONAL,
   [FAITHFUL_FAVOURITES.key]: FAITHFUL_FAVOURITES,
   [SLEEPER_HITS.key]: SLEEPER_HITS,
+  [COMEBACK_KIDS.key]: COMEBACK_KIDS,
+  [TIME_CAPSULE.key]: TIME_CAPSULE,
 };
