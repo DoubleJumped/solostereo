@@ -32,7 +32,7 @@ script exists, Phase 1 onward).
 **Current phase:** Phases 0–7 COMPLETE and live. **Phase 8 (Playlist
 generation & Spotify round-trip) in progress** — agent-orchestrated build,
 subphase by subphase.
-**Next task:** 8A.4 (playlist CRUD lib)
+**Next task:** 8A.G (engine validation gate)
 **Blocked on:** nothing
 
 ## Progress log
@@ -84,6 +84,7 @@ subphase by subphase.
 | 2026-06-18 | 8A.1 | Migration 005: playlists + playlist_tracks (draft/pushed lifecycle, recipe_key/params_json provenance, ordered tracks, FK ON DELETE CASCADE — foreign_keys pragma confirmed ON in lib/db.ts, included flag for exclude-without-delete, UNIQUE(playlist_id,uri)). migrate idempotent; listening_events unchanged (208,482). |
 | 2026-06-18 | 8A.2 | lib/recipes.ts: recipe engine (Recipe/CandidateTrack/GeneratedPlaylist + RECIPES registry, read-only query_only conn) + Obsessions generator. Densest 30-day window per spotify_track_uri (two-pointer), qualifies burst-then-quiet (minBurst 6 / minBurstDays 3 / concentration 0.6 / quietMonths 12), buckets by peak-window year. scripts/recipe-preview.ts spot-check. Defaults: 8 years / 42 tracks; per-URI keying isolates abandoned vs re-released same-name tracks. tsc+lint clean. |
 | 2026-06-18 | 8A.3 | Lapsed loves recipe in lib/recipes.ts (SQL GROUP BY uri: lifetime meaningful plays + MAX(played_at) + representative name via ROW_NUMBER). Qualify minPlays>=8 & last heard >= lapseMonths(18) ago; score = plays * sqrt(monthsSince); perArtistCap 2, top size 40. 898 candidates at defaults. Obsessions output unchanged; tsc+lint clean. |
+| 2026-06-18 | 8A.4 | lib/playlists.ts CRUD on a writable cached connection: previewRecipe, createDraft (tx), listPlaylists/getPlaylist/getPlaylistTracks (bool coercion), rename/setPublic/setIncluded/removeTrack/reorderTracks/addTrackByUri (INSERT OR IGNORE dup)/deletePlaylist (FK cascade), searchLocalTracks (manual-add from music_listening_events). scripts/playlist-test.ts runs full lifecycle, leaves DB clean; tsc+lint clean. |
 
 ---
 
@@ -572,7 +573,7 @@ spec in the approved plan; concrete recipe definitions there.
 - [x] **8A.2** `lib/recipes.ts` registry + **Obsessions** generator
       (rolling-30d burst, tunable params); scratch script, numbers spot-checked.
 - [x] **8A.3** **Lapsed loves** generator; sample output spot-checked.
-- [ ] **8A.4** `lib/playlists.ts` CRUD + `searchLocalTracks` (writable conn);
+- [x] **8A.4** `lib/playlists.ts` CRUD + `searchLocalTracks` (writable conn);
       script: generate → persist draft → edit → read back.
 - [ ] **8A.G** Gate: `npm run validate` green (new checks); CLI smoke builds
       both recipes + persists a draft; sample outputs recorded.
