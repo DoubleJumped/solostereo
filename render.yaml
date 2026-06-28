@@ -7,7 +7,11 @@ services:
     name: solostereo-demo
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build
+    # `npm install` (not `npm ci`): the lockfile is generated on Windows, which
+    # can't record better-sqlite3's Linux-only optional deps (@emnapi/*), so the
+    # strict `npm ci` sync check fails on Render's Linux builder. `npm install`
+    # reconciles per-platform at build time.
+    buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
