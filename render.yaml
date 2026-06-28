@@ -13,6 +13,9 @@ services:
     # reconciles per-platform at build time.
     buildCommand: npm install && npm run build
     startCommand: npm start
+    # Probe a no-DB route so readiness/port detection isn't blocked by the
+    # event loop while a heavy page query runs (better-sqlite3 is synchronous).
+    healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
         value: "22"

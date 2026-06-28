@@ -144,6 +144,53 @@ async function main() {
     throw new Error(`row count changed: ${before.n} -> ${after.n}`);
   }
 
+  // 3. PRECOMPUTE — the data is static, so materialize the aggregate summary
+  //    views into real tables (same names/columns, so the app reads them with
+  //    no code change). This turns ~450ms full-table scans into instant reads,
+  //    which matters on Render's slow free-tier CPU (better-sqlite3 is
+  //    synchronous and blocks the event loop). music_listening_events stays a
+  //    view — materializing its 208k SELECT * would re-bloat the file.
+  const SUMMARY_VIEWS = [
+    "artist_summary",
+    "album_summary",
+    "track_summary",
+    "artist_year_summary",
+    "album_year_summary",
+    "track_year_summary",
+    "monthly_listening_summary",
+    "yearly_listening_summary",
+  ];
+  db.transaction(() => {
+    for (const v of SUMMARY_VIEWS) {
+      db.exec(`CREATE TABLE "${v}__mat" AS SELECT * FROM "${v}"`);
+      db.exec(`DROP VIEW "${v}"`);
+      db.exec(`ALTER TABLE "${v}__mat" RENAME TO "${v}"`);
+    }
+    // Indexes for the lookups/filters the app does against these tables.
+    db.exec("CREATE INDEX idx_artist_summary_name ON artist_summary(artist_name)");
+    db.exec("CREATE INDEX idx_album_summary_name ON album_summary(artist_name)");
+    db.exec("CREATE INDEX idx_track_summary_name ON track_summary(artist_name)");
+    db.exec("CREATE INDEX idx_ays_year ON artist_year_summary(year)");
+    db.exec("CREATE INDEX idx_ays_name ON artist_year_summary(artist_name)");
+    db.exec("CREATE INDEX idx_alys_year ON album_year_summary(year)");
+    db.exec("CREATE INDEX idx_tys_year ON track_year_summary(year)");
+
+    // Single-row precompute of the all-time overview stats (3 COUNT(DISTINCT)
+    // over 208k rows otherwise). Mirrors getOverviewStats(all-time) exactly so
+    // the headline numbers are identical; the demo reads this 1-row table.
+    db.exec(`CREATE TABLE demo_overview_alltime AS
+      SELECT
+        SUM(ms_played >= 30000)                            AS meaningfulPlays,
+        COUNT(*)                                           AS rawPlays,
+        SUM(ms_played) / 3600000.0                         AS listeningHours,
+        COUNT(DISTINCT artist_name)                        AS uniqueArtists,
+        COUNT(DISTINCT artist_name || '|' || album_name)   AS uniqueAlbums,
+        COUNT(DISTINCT artist_name || '|' || track_name)   AS uniqueTracks,
+        MIN(played_at)                                     AS firstEvent,
+        MAX(played_at)                                     AS lastEvent
+      FROM music_listening_events`);
+  })();
+
   // Fold WAL away and reclaim freed pages so the file is as small as possible.
   db.pragma("wal_checkpoint(TRUNCATE)");
   db.pragma("journal_mode = DELETE");

@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { openDb } from "./db";
+import { IS_DEMO } from "./demo";
 
 /**
  * Server-side data access layer (task 3.1): typed query functions over the
@@ -27,6 +28,21 @@ export interface DateRange {
 }
 
 export type RankMetric = "minutes" | "plays";
+
+/**
+ * The default all-time view (no date filter). In demo mode these reads are
+ * served from precomputed/materialized tables built by scripts/build-demo-db.ts
+ * instead of scanning the 208k-row music view live — Render's free CPU can't
+ * aggregate that per request (better-sqlite3 blocks the event loop). Custom
+ * ranges still scan live (rare in the demo). Numbers are identical either way.
+ */
+const isAllTime = (r: DateRange): boolean => !r.from && !r.to;
+
+/** Materialized summary column for a metric (demo all-time fast paths). */
+const METRIC_COLUMN: Record<RankMetric, string> = {
+  minutes: "listening_minutes",
+  plays: "meaningful_plays",
+};
 
 /** WHERE fragment + params for a played_at range over ISO timestamps. */
 function rangeWhere(range: DateRange): { sql: string; params: string[] } {
@@ -59,6 +75,16 @@ export interface OverviewStats {
 }
 
 export function getOverviewStats(range: DateRange = {}): OverviewStats {
+  if (IS_DEMO && isAllTime(range)) {
+    const r = db()
+      .prepare("SELECT * FROM demo_overview_alltime")
+      .get() as OverviewStats & { meaningfulPlays: number | null };
+    return {
+      ...r,
+      meaningfulPlays: r.meaningfulPlays ?? 0,
+      listeningHours: r.listeningHours ?? 0,
+    };
+  }
   const { sql, params } = rangeWhere(range);
   const r = db()
     .prepare(
@@ -92,6 +118,24 @@ export function getListeningOverTime(
   granularity: "month" | "year",
   range: DateRange = {},
 ): TimeBucket[] {
+  if (IS_DEMO && isAllTime(range)) {
+    // The materialized monthly/yearly summaries carry music-only columns
+    // (music_ms_played, meaningful_plays) that match this query's output.
+    const table =
+      granularity === "month"
+        ? "monthly_listening_summary"
+        : "yearly_listening_summary";
+    const bucketCol = granularity === "month" ? "month" : "year";
+    return db()
+      .prepare(
+        `SELECT CAST(${bucketCol} AS TEXT)    AS bucket,
+                music_ms_played / 60000.0     AS listeningMinutes,
+                meaningful_plays              AS meaningfulPlays
+         FROM ${table}
+         ORDER BY ${bucketCol}`,
+      )
+      .all() as TimeBucket[];
+  }
   const fmt = granularity === "month" ? "%Y-%m" : "%Y";
   const { sql, params } = rangeWhere(range);
   return db()
@@ -132,6 +176,19 @@ export function getTopArtists(
   metric: RankMetric = "minutes",
   limit = 10,
 ): RankedArtist[] {
+  if (IS_DEMO && isAllTime(range)) {
+    return db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                meaningful_plays   AS meaningfulPlays,
+                raw_plays          AS rawPlays,
+                listening_minutes  AS listeningMinutes
+         FROM artist_summary
+         ORDER BY ${METRIC_COLUMN[metric]} DESC
+         LIMIT ?`,
+      )
+      .all(limit) as RankedArtist[];
+  }
   const { sql, params } = rangeWhere(range);
   return db()
     .prepare(
@@ -153,6 +210,20 @@ export function getTopAlbums(
   metric: RankMetric = "minutes",
   limit = 10,
 ): RankedAlbum[] {
+  if (IS_DEMO && isAllTime(range)) {
+    return db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                album_name         AS albumName,
+                meaningful_plays   AS meaningfulPlays,
+                raw_plays          AS rawPlays,
+                listening_minutes  AS listeningMinutes
+         FROM album_summary
+         ORDER BY ${METRIC_COLUMN[metric]} DESC
+         LIMIT ?`,
+      )
+      .all(limit) as RankedAlbum[];
+  }
   const { sql, params } = rangeWhere(range);
   return db()
     .prepare(
@@ -175,6 +246,20 @@ export function getTopTracks(
   metric: RankMetric = "plays",
   limit = 10,
 ): RankedTrack[] {
+  if (IS_DEMO && isAllTime(range)) {
+    return db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                track_name         AS trackName,
+                meaningful_plays   AS meaningfulPlays,
+                raw_plays          AS rawPlays,
+                listening_minutes  AS listeningMinutes
+         FROM track_summary
+         ORDER BY ${METRIC_COLUMN[metric]} DESC
+         LIMIT ?`,
+      )
+      .all(limit) as RankedTrack[];
+  }
   const { sql, params } = rangeWhere(range);
   return db()
     .prepare(
