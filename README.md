@@ -46,8 +46,14 @@ services.
 ```bash
 npm install
 npm run migrate     # creates data/solostereo.db and applies db/migrations/*.sql
-npm run dev         # http://localhost:3000
+npm run dev         # then open http://127.0.0.1:3000 (not localhost — see below)
 ```
+
+> **Open the app at `http://127.0.0.1:3000`, not `localhost:3000`.** The Spotify
+> OAuth redirect URI uses `127.0.0.1`, and the login state cookie is host-scoped
+> — connecting from `localhost` drops the cookie and fails with
+> `error=state_mismatch`. Everything else works on either host, but `127.0.0.1`
+> is the one that won't bite you when you connect Spotify.
 
 Copy `.env.example` to `.env.local` if you need to override defaults (the
 database path; Spotify OAuth keys are only needed for the future live
@@ -168,6 +174,23 @@ Register-ScheduledTask -TaskName "solostereo-sync" -Action $action -Trigger $tri
 For a fully background task that also runs when logged out, add a principal
 with `-LogonType S4U` (no stored password). Remove the task later with
 `Unregister-ScheduledTask -TaskName "solostereo-sync"`.
+
+> **Currently registered on this machine** (as of 2026-06-28): task
+> `solostereo-sync` runs **every 6 hours** (4×/day) at **10:30 AM, 4:30 PM,
+> 10:30 PM, and 4:30 AM** local time, anchored to a start date of 2026-06-13.
+> The 4:30 PM run deliberately falls in the middle of the heavy daytime
+> listening window so that window gets multiple runs rather than one long gap.
+> It runs as user `wgrae` via `sync-hidden.vbs`. Inspect or change the interval
+> without re-creating the task:
+>
+> ```powershell
+> # view
+> (Get-ScheduledTask -TaskName 'solostereo-sync').Triggers[0].Repetition.Interval
+> # change cadence (e.g. to every 4 hours)
+> $t = Get-ScheduledTask -TaskName 'solostereo-sync'
+> $t.Triggers[0].Repetition.Interval = 'PT4H'
+> Set-ScheduledTask -TaskName 'solostereo-sync' -Trigger $t.Triggers
+> ```
 Any gap larger than the ~50-track window can only be backfilled by
 re-requesting the Extended Streaming History export and re-importing (the
 dedup hash merges it with synced rows, no duplicates).

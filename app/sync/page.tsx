@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { SyncControls } from "@/components/sync/sync-controls";
 import { fmtDate, fmtInt } from "@/lib/format";
 import {
@@ -22,10 +23,33 @@ export default async function SyncPage({
   searchParams: Promise<{ connected?: string; error?: string }>;
 }) {
   const params = await searchParams;
+  const host = (await headers()).get("host") ?? "";
+  const onLocalhost = host.toLowerCase().startsWith("localhost");
   const configured = getSpotifyConfig() !== null;
   const account = getAccount();
   const stats = getSyncStats();
   const errorMsg = params.error ? (ERRORS[params.error] ?? params.error) : null;
+  // A state_mismatch on `localhost` almost always means the login cookie was
+  // dropped: the OAuth redirect URI uses 127.0.0.1, a different cookie host, so
+  // Spotify sends you back to a host the cookie was never set on. Point the user
+  // at the right URL instead of leaving them with a bare "didn't match".
+  const hostHint =
+    params.error === "state_mismatch" && onLocalhost ? (
+      <>
+        {" "}
+        This usually means the app was opened on{" "}
+        <code className="font-mono text-xs">localhost</code> — spotify returns
+        you to <code className="font-mono text-xs">127.0.0.1</code>, so the login
+        cookie is lost. Open{" "}
+        <a
+          className="text-primary underline"
+          href={`http://127.0.0.1:${host.split(":")[1] ?? "3000"}/sync`}
+        >
+          {`127.0.0.1:${host.split(":")[1] ?? "3000"}`}
+        </a>{" "}
+        and connect again.
+      </>
+    ) : null;
 
   return (
     <div className="flex flex-col gap-10">
@@ -41,6 +65,7 @@ export default async function SyncPage({
       {errorMsg && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-foreground">
           {errorMsg}
+          {hostHint}
         </p>
       )}
       {params.connected && account && (
