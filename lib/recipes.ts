@@ -1908,6 +1908,116 @@ export const TIME_CAPSULE: Recipe<TimeCapsuleParams> = {
   generate: generateTimeCapsule,
 };
 
+export interface ArtistTopParams {
+  /** Exact artist name as it appears in my listening history. */
+  artist: string;
+  /** Max tracks — capped lower when I haven't played that many by them. */
+  size: number;
+  // Index signature so params satisfy Record<string, unknown> (registry type).
+  [key: string]: unknown;
+}
+
+const ARTIST_TOP_DEFAULTS: ArtistTopParams = {
+  artist: "",
+  size: 50,
+};
+
+/** One of an artist's tracks with its meaningful-play count. */
+interface ArtistTopRow {
+  uri: string;
+  artist: string | null;
+  track: string | null;
+  album: string | null;
+  plays: number;
+}
+
+/**
+ * Artist top tracks: my `size` most-played songs by a single artist, ranked by
+ * meaningful plays — a focused, history-driven take on Spotify's "This Is".
+ *
+ * Takes an exact `artist` name and returns up to `size` of their tracks ordered
+ * by meaningful plays desc (ties broken by most-recent play). When I've played
+ * fewer than `size` distinct songs by them it returns all of them, no padding.
+ * Empty artist (the default) yields no playlist so the preview stays blank until
+ * one is chosen. Names are chosen per uri in SQL. UTC, meaningful plays only.
+ */
+function generateArtistTop(params: ArtistTopParams): GeneratedPlaylist[] {
+  const artist = String(params.artist ?? "").trim();
+  const { size } = params;
+  if (!artist) return [];
+
+  const rows = db()
+    .prepare(
+      `WITH plays AS (
+         SELECT spotify_track_uri AS uri,
+                artist_name,
+                track_name,
+                album_name,
+                played_at
+         FROM music_listening_events
+         WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+           AND artist_name = ?
+       ),
+       uri_agg AS (
+         SELECT uri, COUNT(*) AS plays, MAX(played_at) AS lastPlayed
+         FROM plays
+         GROUP BY uri
+       ),
+       names AS (
+         SELECT uri, artist_name, track_name, album_name,
+                ROW_NUMBER() OVER (
+                  PARTITION BY uri
+                  ORDER BY COUNT(*) DESC, MAX(played_at) DESC
+                ) AS rn
+         FROM plays
+         GROUP BY uri, artist_name, track_name, album_name
+       )
+       SELECT u.uri        AS uri,
+              n.artist_name AS artist,
+              n.track_name  AS track,
+              n.album_name  AS album,
+              u.plays       AS plays
+       FROM uri_agg u
+       JOIN names n ON n.uri = u.uri AND n.rn = 1
+       ORDER BY u.plays DESC, u.lastPlayed DESC
+       LIMIT ?`,
+    )
+    .all(artist, size) as ArtistTopRow[];
+
+  if (rows.length === 0) return [];
+
+  const tracks: CandidateTrack[] = rows.map((r) => ({
+    uri: r.uri,
+    artist: r.artist,
+    track: r.track,
+    album: r.album,
+    score: r.plays,
+    reason: `${r.plays} play${r.plays === 1 ? "" : "s"} of '${r.track ?? "?"}'`,
+  }));
+
+  return [
+    {
+      name: `${artist} — top ${tracks.length}`,
+      description:
+        `My ${tracks.length} most-played ${artist} track${tracks.length === 1 ? "" : "s"} ` +
+        `by meaningful plays — my own "this is ${artist}".`,
+      recipeKey: "artistTop",
+      params: { ...params, artist },
+      tracks,
+    },
+  ];
+}
+
+export const ARTIST_TOP: Recipe<ArtistTopParams> = {
+  key: "artistTop",
+  label: "Artist top tracks",
+  description:
+    'My most-played songs by one artist — a focused, history-driven take on ' +
+    'Spotify\'s "This Is" that stops short when I haven\'t played that many.',
+  defaultParams: ARTIST_TOP_DEFAULTS,
+  generate: generateArtistTop,
+};
+
 /**
  * Recipe registry. Keyed by `recipeKey` so generated playlists can be traced
  * back to the recipe that built them (provenance lives in playlist_tracks per
@@ -1925,4 +2035,5 @@ export const RECIPES: Record<string, Recipe> = {
   [SLEEPER_HITS.key]: SLEEPER_HITS,
   [COMEBACK_KIDS.key]: COMEBACK_KIDS,
   [TIME_CAPSULE.key]: TIME_CAPSULE,
+  [ARTIST_TOP.key]: ARTIST_TOP,
 };

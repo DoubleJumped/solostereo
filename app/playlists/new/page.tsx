@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fmtInt } from "@/lib/format";
 import { previewRecipe } from "@/lib/playlists";
+import { getArtistTable } from "@/lib/queries";
 import { RECIPES } from "@/lib/recipes";
 import { GenerateForm } from "@/components/playlists/generate-form";
 
@@ -35,6 +36,20 @@ export default async function NewPlaylistPage({
   // Preview with default params so the user can see what they'll get.
   const preview = previewRecipe(recipe.key);
 
+  // Recipes with a string param (e.g. an artist name) get an autocomplete list
+  // of the user's artists, most-listened first. The field is free-text so any
+  // exact name still works — the cap just keeps the inlined <datalist> light
+  // (the full library can be several thousand artists). Skip the query
+  // otherwise.
+  const needsArtists = Object.values(recipe.defaultParams).some(
+    (v) => typeof v === "string",
+  );
+  const artists = needsArtists
+    ? getArtistTable()
+        .slice(0, 1000)
+        .map((a) => a.artistName)
+    : [];
+
   return (
     <div className="flex flex-col gap-10">
       <section className="pt-2">
@@ -55,6 +70,7 @@ export default async function NewPlaylistPage({
       <GenerateForm
         recipeKey={recipe.key}
         defaultParams={recipe.defaultParams}
+        artists={artists}
         preview={preview.map((p) => ({
           name: p.name,
           trackCount: p.tracks.length,

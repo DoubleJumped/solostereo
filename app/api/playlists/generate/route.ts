@@ -30,14 +30,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate params: must be a plain object of finite numbers (the recipe
-    // params are all numeric). Reject anything unparseable.
+    // Validate params against the recipe's default types: numeric params must be
+    // finite numbers; string params (e.g. an artist name) pass through as text.
+    const defaults = RECIPES[recipeKey].defaultParams as Record<string, unknown>;
     const rawParams =
       body.params && typeof body.params === "object" && !Array.isArray(body.params)
         ? (body.params as Record<string, unknown>)
         : {};
-    const params: Record<string, number> = {};
+    const params: Record<string, number | string> = {};
     for (const [k, v] of Object.entries(rawParams)) {
+      if (typeof defaults[k] === "string") {
+        params[k] = typeof v === "string" ? v : String(v);
+        continue;
+      }
       const n = typeof v === "number" ? v : Number(v);
       if (!Number.isFinite(n)) {
         return NextResponse.json(

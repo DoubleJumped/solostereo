@@ -28,6 +28,107 @@ const FIELD_SPECS: Record<string, FieldSpec> = {
   perArtistCap: { label: "max per artist", min: 1, max: 20, step: 1 },
   minPlays: { label: "min lifetime plays", min: 1, max: 500, step: 1 },
   lapseMonths: { label: "lapsed for (months)", min: 1, max: 120, step: 1 },
+  dominance: {
+    label: "dominance (top track's share of the artist's plays, 0–1)",
+    min: 0,
+    max: 1,
+    step: 0.05,
+  },
+  minArtistPlays: {
+    label: "min artist plays (total plays for an artist to qualify)",
+    min: 1,
+    max: 500,
+    step: 1,
+  },
+  minDistinctTracks: {
+    label: "min distinct tracks (different songs played by the artist)",
+    min: 1,
+    max: 50,
+    step: 1,
+  },
+  perArtist: {
+    label: "per artist (tracks kept from each artist)",
+    min: 1,
+    max: 20,
+    step: 1,
+  },
+  topArtists: {
+    label: "top artists (how many artists to draw from)",
+    min: 1,
+    max: 200,
+    step: 1,
+  },
+  artists: {
+    label: "artists (how many artists to draw from)",
+    min: 1,
+    max: 200,
+    step: 1,
+  },
+  minArtistYears: {
+    label: "min artist years (distinct years I've played the artist)",
+    min: 1,
+    max: 30,
+    step: 1,
+  },
+  perArtistTrackMinPlays: {
+    label: "per-artist track min plays (plays a track needs to count)",
+    min: 1,
+    max: 100,
+    step: 1,
+  },
+  minYears: {
+    label: "min years (distinct years the track was played)",
+    min: 1,
+    max: 30,
+    step: 1,
+  },
+  minGapMonths: {
+    label: "min gap (months) (silence before the comeback)",
+    min: 1,
+    max: 120,
+    step: 1,
+  },
+  gapMonths: {
+    label: "gap (months) (silence separating listening spells)",
+    min: 1,
+    max: 120,
+    step: 1,
+  },
+  minClusterPlays: {
+    label: "min cluster plays (plays to count as a listening spell)",
+    min: 1,
+    max: 100,
+    step: 1,
+  },
+  minClusters: {
+    label: "min clusters (separate listening spells required)",
+    min: 1,
+    max: 20,
+    step: 1,
+  },
+  windowDays: {
+    label: "window (days) (length of the listening window)",
+    min: 1,
+    max: 120,
+    step: 1,
+  },
+  minPlaysInWindow: {
+    label: "min plays in window (plays inside the window to qualify)",
+    min: 1,
+    max: 100,
+    step: 1,
+  },
+};
+
+/** Per-string-param UI hints: label and placeholder. */
+const STRING_FIELD_SPECS: Record<
+  string,
+  { label: string; placeholder?: string }
+> = {
+  artist: {
+    label: "artist (exact name from your listening history)",
+    placeholder: "start typing an artist…",
+  },
 };
 
 const ALL_YEARS = "__all__";
@@ -36,10 +137,13 @@ export function GenerateForm({
   recipeKey,
   defaultParams,
   preview,
+  artists = [],
 }: {
   recipeKey: string;
   defaultParams: Record<string, unknown>;
   preview: PreviewItem[];
+  /** Known artist names, for autocompleting string params like `artist`. */
+  artists?: string[];
 }) {
   const router = useRouter();
 
@@ -47,10 +151,15 @@ export function GenerateForm({
   const numericKeys = Object.keys(defaultParams).filter(
     (k) => k !== "year" && typeof defaultParams[k] === "number",
   );
+  // String params (e.g. an artist name) get a text field with autocomplete.
+  const stringKeys = Object.keys(defaultParams).filter(
+    (k) => typeof defaultParams[k] === "string",
+  );
 
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const k of numericKeys) init[k] = String(defaultParams[k]);
+    for (const k of stringKeys) init[k] = String(defaultParams[k]);
     return init;
   });
 
@@ -70,7 +179,16 @@ export function GenerateForm({
     setBusy(true);
     setError(null);
 
-    const params: Record<string, number> = {};
+    const params: Record<string, number | string> = {};
+    for (const k of stringKeys) {
+      const val = values[k].trim();
+      if (!val) {
+        setError(`"${STRING_FIELD_SPECS[k]?.label ?? k}" is required.`);
+        setBusy(false);
+        return;
+      }
+      params[k] = val;
+    }
     for (const k of numericKeys) {
       const n = Number(values[k]);
       if (!Number.isFinite(n)) {
@@ -115,6 +233,34 @@ export function GenerateForm({
       <h2 className="font-display text-2xl lowercase tracking-tight">
         settings
       </h2>
+
+      {stringKeys.map((k) => {
+        const spec = STRING_FIELD_SPECS[k];
+        const listId = artists.length > 0 ? `${k}-options` : undefined;
+        return (
+          <label key={k} className="flex flex-col gap-1">
+            <span className="text-xs lowercase tracking-widest text-muted-foreground">
+              {spec?.label ?? k}
+            </span>
+            <input
+              type="text"
+              list={listId}
+              value={values[k]}
+              placeholder={spec?.placeholder}
+              autoComplete="off"
+              onChange={(e) => setField(k, e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary"
+            />
+            {listId && (
+              <datalist id={listId}>
+                {artists.map((a) => (
+                  <option key={a} value={a} />
+                ))}
+              </datalist>
+            )}
+          </label>
+        );
+      })}
 
       <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {numericKeys.map((k) => {
