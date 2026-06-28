@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter, Geist_Mono } from "next/font/google";
 import { SiteNav } from "@/components/site-nav";
+import { DemoBanner } from "@/components/demo-banner";
+import { IS_DEMO } from "@/lib/demo";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -35,6 +37,7 @@ export default function RootLayout({
       className={`dark ${fraunces.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        {IS_DEMO && <DemoBanner />}
         <SiteNav />
         <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
           {children}

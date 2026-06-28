@@ -1,0 +1,20 @@
+# Render blueprint for the public, read-only Solo Stereo demo.
+# New → Blueprint on render.com, point it at this repo, and it provisions the
+# service below. The demo ships the sanitized data/demo.db snapshot and runs
+# with NEXT_PUBLIC_DEMO=1, so no Spotify secrets or writable disk are needed.
+services:
+  - type: web
+    name: solostereo-demo
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Read-only showcase: opens the DB read-only and disables sync/generate/push.
+      - key: NEXT_PUBLIC_DEMO
+        value: "1"
+      # Use the committed demo snapshot instead of the (gitignored) real db.
+      - key: SOLOSTEREO_DB_PATH
+        value: data/demo.db

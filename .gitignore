@@ -4,6 +4,9 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
+# …except the sanitized, slimmed snapshot built for the public demo
+# (npm run build:demo-db — tokens stripped, dedup_hash dropped). See README.
+!data/demo.db
 
 # dependencies / build
 node_modules/

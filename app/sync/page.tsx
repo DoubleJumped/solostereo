@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { SyncControls } from "@/components/sync/sync-controls";
+import { IS_DEMO } from "@/lib/demo";
 import { fmtDate, fmtInt } from "@/lib/format";
 import {
   getAccount,
@@ -86,7 +87,19 @@ export default async function SyncPage({
       </section>
 
       {/* connection */}
-      {!configured ? (
+      {IS_DEMO ? (
+        <section className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-card p-6">
+          <h2 className="font-display text-2xl lowercase tracking-tight">
+            demo mode
+          </h2>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            This is a read-only showcase, so live Spotify sync is turned off —
+            the numbers above are a frozen snapshot of the archive. In the real
+            app this page connects a Spotify account and pulls in recently played
+            tracks to keep the history current.
+          </p>
+        </section>
+      ) : !configured ? (
         <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-6">
           <h2 className="font-display text-2xl lowercase tracking-tight">
             not configured yet

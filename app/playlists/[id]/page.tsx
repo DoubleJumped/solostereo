@@ -4,6 +4,8 @@ import { fmtDate, fmtInt } from "@/lib/format";
 import { getPlaylist, getPlaylistTracks } from "@/lib/playlists";
 import { RECIPES } from "@/lib/recipes";
 import { PlaylistEditor } from "@/components/playlists/playlist-editor";
+import { DemoPlaylistView } from "@/components/playlists/demo-playlist-view";
+import { IS_DEMO } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 
@@ -69,18 +71,22 @@ export default async function PlaylistDetailPage({
         </p>
       </section>
 
-      <PlaylistEditor
-        playlist={{
-          id: playlist.id,
-          name: playlist.name,
-          description: playlist.description,
-          public: playlist.public,
-          status: playlist.status,
-          spotifyPlaylistId: playlist.spotifyPlaylistId,
-        }}
-        tracks={tracks}
-        includedCount={includedCount}
-      />
+      {IS_DEMO ? (
+        <DemoPlaylistView tracks={tracks} />
+      ) : (
+        <PlaylistEditor
+          playlist={{
+            id: playlist.id,
+            name: playlist.name,
+            description: playlist.description,
+            public: playlist.public,
+            status: playlist.status,
+            spotifyPlaylistId: playlist.spotifyPlaylistId,
+          }}
+          tracks={tracks}
+          includedCount={includedCount}
+        />
+      )}
     </div>
   );
 }

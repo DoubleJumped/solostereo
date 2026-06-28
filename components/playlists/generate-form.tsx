@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { IS_DEMO } from "@/lib/demo";
 
 /** A previewed (default-params) generated playlist, slimmed for the picker. */
 export interface PreviewItem {
@@ -315,14 +316,20 @@ export function GenerateForm({
         </p>
       )}
 
-      <div>
+      <div className="flex flex-col gap-2">
         <button
           type="submit"
-          disabled={busy}
-          className="rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          disabled={busy || IS_DEMO}
+          className="self-start rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {busy ? "generating…" : "create draft"}
         </button>
+        {IS_DEMO && (
+          <p className="text-xs lowercase text-muted-foreground">
+            generating playlists is disabled in the demo — the preview below
+            shows what this recipe would build.
+          </p>
+        )}
       </div>
     </form>
   );

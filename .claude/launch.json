@@ -6,6 +6,16 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "solostereo-demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3001"],
+      "port": 3001,
+      "env": {
+        "NEXT_PUBLIC_DEMO": "1",
+        "SOLOSTEREO_DB_PATH": "data/demo.db"
+      }
     }
   ]
 }
