@@ -80,7 +80,14 @@ export function MonthlyOverlay({
         </div>
       </div>
       <div className="mt-4 h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* initialDimension matches the h-64 box (256px) so the first paint
+            sizes correctly instead of warning at -1×-1; ResizeObserver
+            corrects width on mount. */}
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          initialDimension={{ width: 600, height: 256 }}
+        >
           <LineChart
             data={points}
             margin={{ top: 4, right: 12, bottom: 0, left: 0 }}

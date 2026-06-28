@@ -113,7 +113,14 @@ export function ListeningHero({
         </div>
       ) : (
         <div className="h-72 w-full px-2 pb-2 pt-4">
-          <ResponsiveContainer width="100%" height="100%">
+          {/* initialDimension matches the padded box (h-72 − py = 264px) so the
+              first paint sizes correctly instead of warning at -1×-1; the
+              ResizeObserver corrects width on mount. */}
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            initialDimension={{ width: 600, height: 264 }}
+          >
             <AreaChart
               data={data}
               margin={{ top: 4, right: 16, bottom: 0, left: 0 }}

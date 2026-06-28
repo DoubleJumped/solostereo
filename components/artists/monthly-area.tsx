@@ -64,7 +64,14 @@ export function MonthlyArea({ buckets }: { buckets: TimeBucket[] }) {
 
   return (
     <div className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+      {/* initialDimension matches the h-56 box (224px) so the first paint sizes
+          correctly instead of warning at -1×-1; ResizeObserver corrects width
+          on mount. */}
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        initialDimension={{ width: 600, height: 224 }}
+      >
         <AreaChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="artistFill" x1="0" y1="0" x2="0" y2="1">
