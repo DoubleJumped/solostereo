@@ -168,7 +168,7 @@ export function ArtistTable({ rows }: { rows: ArtistTableRow[] }) {
       {filtered.length > shown && (
         <button
           onClick={() => setShown((s) => s + PAGE_SIZE)}
-          className="self-center rounded-full border border-border px-4 py-1.5 text-xs lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+          className="self-center rounded-sm border border-border px-4 py-1 font-display text-base lowercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
         >
           show {Math.min(PAGE_SIZE, filtered.length - shown)} more
         </button>

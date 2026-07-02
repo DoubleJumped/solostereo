@@ -212,7 +212,7 @@ export function PlaylistEditor({
           <button
             onClick={push}
             disabled={pushing || busy || includedCount === 0}
-            className="rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="lcd-glow rounded-sm border border-primary/60 bg-primary/15 px-4 py-1 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25 disabled:opacity-50"
           >
             {pushing
               ? alreadyPushed
@@ -230,7 +230,7 @@ export function PlaylistEditor({
               href={pushedUrl}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full border border-primary/40 px-4 py-1.5 text-sm lowercase tracking-wide text-primary transition-colors hover:bg-primary/10"
+              className="rounded-sm border border-primary/40 px-4 py-1 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/10"
             >
               open in spotify
             </a>
@@ -283,14 +283,14 @@ export function PlaylistEditor({
           <button
             onClick={saveDetails}
             disabled={busy || !dirty}
-            className="rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="lcd-glow rounded-sm border border-primary/60 bg-primary/15 px-4 py-1 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25 disabled:opacity-50"
           >
             save
           </button>
           <button
             onClick={togglePublic}
             disabled={busy}
-            className="rounded-full border border-border px-4 py-1.5 text-sm lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            className="rounded-sm border border-border px-4 py-1 font-display text-base lowercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
           >
             make {playlist.public ? "private" : "public"}
           </button>
@@ -346,7 +346,7 @@ export function PlaylistEditor({
         <button
           onClick={deletePlaylist}
           disabled={busy}
-          className="rounded-full border border-destructive/50 px-4 py-1.5 text-sm lowercase tracking-wide text-foreground transition-colors hover:bg-destructive/10 disabled:opacity-50"
+          className="rounded-sm border border-destructive/50 px-4 py-1 font-display text-base lowercase tracking-wide text-foreground transition-colors hover:bg-destructive/10 disabled:opacity-50"
         >
           delete
         </button>
@@ -427,14 +427,14 @@ function TrackRow({
         <button
           onClick={() => onToggle(!track.included)}
           disabled={busy}
-          className="rounded-full border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="rounded-sm border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           {track.included ? "exclude" : "include"}
         </button>
         <button
           onClick={onRemove}
           disabled={busy}
-          className="rounded-full border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="rounded-sm border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           remove
         </button>
@@ -460,7 +460,7 @@ function IconButton({
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+      className="flex h-6 w-6 items-center justify-center rounded-sm border border-border text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
     >
       {children}
     </button>
@@ -588,7 +588,7 @@ function ManualAdd({
                   <button
                     onClick={() => add(r)}
                     disabled={busy}
-                    className="shrink-0 rounded-full bg-primary px-3 py-0.5 text-xs lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                    className="shrink-0 rounded-sm border border-primary/60 bg-primary/15 px-3 py-0.5 text-xs lowercase tracking-wide text-primary transition-colors hover:bg-primary/25 disabled:opacity-50"
                   >
                     add
                   </button>

@@ -7,8 +7,8 @@ export function OverviewEmptyState() {
       <section className="pt-10">
         <Wordmark asLink={false} className="text-6xl sm:text-7xl" />
         <p className="mt-4 max-w-lg text-lg text-muted-foreground">
-          a personal listening archive — every play since 2014, typeset like
-          it deserves.
+          a personal listening archive — every play since 2014, sprayed
+          across the wall.
         </p>
       </section>
       <section className="relative flex h-64 flex-col items-center justify-center overflow-hidden rounded-lg border border-border bg-card">

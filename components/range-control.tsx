@@ -60,17 +60,17 @@ export function RangeControl({ active }: { active: RangePreset }) {
       <div
         role="group"
         aria-label="date range"
-        className="flex flex-wrap gap-1 text-xs lowercase tracking-wide"
+        className="flex flex-wrap gap-1 font-display text-base lowercase tracking-wide"
       >
         {PRESETS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setPreset(key)}
             className={cn(
-              "rounded-full px-3 py-1 transition-colors",
+              "rounded-sm border px-3 py-0.5 transition-colors",
               active === key || (key === "custom" && customOpen)
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground",
+                ? "border-primary/60 bg-primary/15 text-primary"
+                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
             )}
           >
             {label}
@@ -100,7 +100,7 @@ export function RangeControl({ active }: { active: RangePreset }) {
           </label>
           <button
             onClick={applyCustom}
-            className="rounded-full bg-primary/15 px-3 py-1 lowercase tracking-wide text-primary transition-colors hover:bg-primary/25"
+            className="rounded-sm border border-primary/60 bg-primary/15 px-3 py-0.5 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25"
           >
             apply
           </button>

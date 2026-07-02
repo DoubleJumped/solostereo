@@ -83,22 +83,22 @@ export function ListeningHero({
   return (
     <section
       aria-label="listening over time"
-      className="rounded-lg border border-border bg-card"
+      className="crt rounded-lg border border-border bg-card"
     >
       <div className="flex items-baseline justify-between px-5 pt-5">
         <h2 className="font-display text-2xl lowercase tracking-tight">
           listening over time
         </h2>
-        <div className="flex gap-1 text-xs lowercase tracking-wide">
+        <div className="flex gap-1 font-display text-base lowercase tracking-wide">
           {(["month", "year"] as const).map((g) => (
             <button
               key={g}
               onClick={() => setGranularity(g)}
               className={cn(
-                "rounded-full px-3 py-1 transition-colors",
+                "rounded-sm border px-3 py-0.5 transition-colors",
                 granularity === g
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
               )}
             >
               by {g}

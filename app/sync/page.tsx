@@ -76,7 +76,7 @@ export default async function SyncPage({
       )}
 
       {/* current state */}
-      <section className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
+      <section className="crt grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
         <Stat
           label="latest event"
           value={stats.latest ? fmtDate(stats.latest) : "—"}
@@ -131,7 +131,7 @@ export default async function SyncPage({
           </p>
           <a
             href="/api/spotify/login"
-            className="rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90"
+            className="lcd-glow rounded-sm border border-primary/60 bg-primary/15 px-4 py-1.5 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25"
           >
             connect spotify
           </a>
@@ -193,8 +193,8 @@ function Stat({
       <div
         className={
           small
-            ? "stat-numeral pt-1 text-lg leading-tight sm:text-xl"
-            : "stat-numeral text-3xl sm:text-4xl"
+            ? "stat-numeral lcd-glow pt-1 text-xl leading-tight text-primary sm:text-2xl"
+            : "stat-numeral lcd-glow text-4xl text-primary sm:text-5xl"
         }
       >
         {value}

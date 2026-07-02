@@ -44,14 +44,14 @@ export function SyncControls() {
         <button
           onClick={sync}
           disabled={busy !== null}
-          className="rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="lcd-glow rounded-sm border border-primary/60 bg-primary/15 px-4 py-1 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25 disabled:opacity-50"
         >
           {busy === "sync" ? "syncing…" : "sync now"}
         </button>
         <button
           onClick={disconnect}
           disabled={busy !== null}
-          className="rounded-full border border-border px-4 py-1.5 text-sm lowercase tracking-wide text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="rounded-sm border border-border px-4 py-1 font-display text-base lowercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
         >
           disconnect
         </button>

@@ -23,16 +23,16 @@ export function MetricToggle() {
   }
 
   return (
-    <div className="flex gap-1 text-xs lowercase tracking-wide">
+    <div className="flex gap-1 font-display text-base lowercase tracking-wide">
       {(["plays", "minutes"] as const).map((m) => (
         <button
           key={m}
           onClick={() => setMetric(m)}
           className={cn(
-            "rounded-full px-3 py-1 transition-colors",
+            "rounded-sm border px-3 py-0.5 transition-colors",
             active === m
-              ? "bg-primary/15 text-primary"
-              : "text-muted-foreground hover:text-foreground",
+              ? "border-primary/60 bg-primary/15 text-primary"
+              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
           )}
         >
           by {m}

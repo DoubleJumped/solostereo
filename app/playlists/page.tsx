@@ -41,7 +41,7 @@ export default async function PlaylistsPage() {
               <div>
                 <Link
                   href={`/playlists/new?recipe=${recipe.key}`}
-                  className="inline-block rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90"
+                  className="lcd-glow inline-block rounded-sm border border-primary/60 bg-primary/15 px-4 py-1 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25"
                 >
                   generate
                 </Link>
@@ -103,8 +103,8 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={
         pushed
-          ? "rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs lowercase tracking-wide text-primary"
-          : "rounded-full border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground"
+          ? "rounded-sm border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs lowercase tracking-wide text-primary"
+          : "rounded-sm border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground"
       }
     >
       {status}

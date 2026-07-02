@@ -76,7 +76,7 @@ export default async function SkipsPage({
           <div
             role="group"
             aria-label="minimum plays"
-            className="flex flex-wrap items-baseline gap-1 text-xs lowercase tracking-wide"
+            className="flex flex-wrap items-baseline gap-1 font-display text-base lowercase tracking-wide"
           >
             <span className="mr-1 text-muted-foreground">at least</span>
             {MIN_PLAY_OPTIONS.map((n) => (
@@ -84,10 +84,10 @@ export default async function SkipsPage({
                 key={n}
                 href={n === DEFAULT_MIN_PLAYS ? "/skips" : `/skips?min=${n}`}
                 className={cn(
-                  "rounded-full px-3 py-1 transition-colors",
+                  "rounded-sm border px-3 py-0.5 transition-colors",
                   minPlays === n
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
                 )}
               >
                 {n} plays

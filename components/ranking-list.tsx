@@ -10,7 +10,7 @@ export interface RankingRow {
 }
 
 /**
- * A designed ranking list: Fraunces rank numerals, hairline separators,
+ * A designed ranking list: dot-matrix rank numerals, hairline separators,
  * right-aligned tabular values.
  */
 export function RankingList({

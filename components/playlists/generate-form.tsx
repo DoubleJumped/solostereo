@@ -320,7 +320,7 @@ export function GenerateForm({
         <button
           type="submit"
           disabled={busy || IS_DEMO}
-          className="self-start rounded-full bg-primary px-4 py-1.5 text-sm lowercase tracking-wide text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="lcd-glow self-start rounded-sm border border-primary/60 bg-primary/15 px-4 py-1 font-display text-base lowercase tracking-wide text-primary transition-colors hover:bg-primary/25 disabled:opacity-50"
         >
           {busy ? "generating…" : "create draft"}
         </button>

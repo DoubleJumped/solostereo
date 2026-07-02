@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter, Geist_Mono } from "next/font/google";
+import { VT323, Inter, Geist_Mono } from "next/font/google";
 import { SiteNav } from "@/components/site-nav";
 import { DemoBanner } from "@/components/demo-banner";
 import { IS_DEMO } from "@/lib/demo";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// The deck's dot-matrix LCD face is the app's display type — the same font
+// the cover projects onto the mural, so every page reads as the same machine.
+const lcdFont = VT323({
+  variable: "--font-lcd",
+  weight: "400",
   subsets: ["latin"],
-  axes: ["opsz"],
 });
 
 const inter = Inter({
@@ -34,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${fraunces.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`dark ${lcdFont.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         {IS_DEMO && <DemoBanner />}

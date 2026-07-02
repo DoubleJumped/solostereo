@@ -21,11 +21,13 @@ export function SiteNav() {
   // The cover page ("/") is a full-bleed jukebox with its own way in — no nav.
   if (pathname === "/") return null;
 
+  // The deck's faceplate: dot-matrix labels on a lifted panel, the active
+  // page lit up in phosphor like the segment that's currently playing.
   return (
-    <header className="border-b border-border">
+    <header className="border-b border-border bg-card/60">
       <nav className="mx-auto flex h-14 max-w-6xl items-baseline gap-5 overflow-x-auto px-6 sm:gap-8">
-        <Wordmark className="text-xl" />
-        <ul className="flex items-baseline gap-4 sm:gap-6">
+        <Wordmark className="text-2xl" />
+        <ul className="flex items-baseline gap-4 font-display text-lg sm:gap-6">
           {pages.map(({ href, label }) => {
             const active = pathname.startsWith(href);
             return (
@@ -33,9 +35,9 @@ export function SiteNav() {
                 <Link
                   href={href}
                   className={cn(
-                    "whitespace-nowrap text-sm lowercase tracking-wide transition-colors",
+                    "whitespace-nowrap lowercase tracking-wide transition-colors",
                     active
-                      ? "text-primary"
+                      ? "lcd-glow text-primary"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >

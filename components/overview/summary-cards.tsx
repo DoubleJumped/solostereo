@@ -18,8 +18,8 @@ function Card({
       <div
         className={
           small
-            ? "stat-numeral pt-1 text-lg leading-snug sm:text-xl"
-            : "stat-numeral text-[2.1rem] leading-none sm:text-4xl"
+            ? "stat-numeral lcd-glow pt-1 text-xl leading-snug text-primary sm:text-2xl"
+            : "stat-numeral lcd-glow text-[2.6rem] leading-none text-primary sm:text-5xl"
         }
       >
         {value}
@@ -31,12 +31,12 @@ function Card({
   );
 }
 
-/** Summary cards row (task 3.2): the period's vitals at a glance. */
+/** Summary cards row (task 3.2): the period's vitals as a bank of LCDs. */
 export function SummaryCards({ stats }: { stats: OverviewStats }) {
   return (
     <section
       aria-label="listening summary"
-      className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3 lg:grid-cols-6"
+      className="crt grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3 lg:grid-cols-6"
     >
       <Card
         value={fmtInt(stats.meaningfulPlays)}

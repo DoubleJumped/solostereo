@@ -65,7 +65,7 @@ export function SlopeGraph({
           textAnchor="end"
           className="fill-[var(--color-chart-2)]"
           fontSize="13"
-          fontFamily="var(--font-fraunces)"
+          fontFamily="var(--font-lcd), monospace"
         >
           {yearA}
         </text>
@@ -75,7 +75,7 @@ export function SlopeGraph({
           textAnchor="start"
           className="fill-[var(--color-primary)]"
           fontSize="13"
-          fontFamily="var(--font-fraunces)"
+          fontFamily="var(--font-lcd), monospace"
         >
           {yearB}
         </text>
