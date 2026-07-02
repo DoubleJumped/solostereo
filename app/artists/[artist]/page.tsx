@@ -4,6 +4,7 @@ import { MonthlyArea } from "@/components/artists/monthly-area";
 import { YearTimeline } from "@/components/artists/year-timeline";
 import { RankingList } from "@/components/ranking-list";
 import { fmtDate, fmtInt, fmtMinutes } from "@/lib/format";
+import { trackHref } from "@/lib/utils";
 import {
   getArtistAlbums,
   getArtistMonths,
@@ -91,6 +92,7 @@ export default async function ArtistDetailPage({
           title="top tracks"
           rows={tracks.map((t) => ({
             name: t.trackName,
+            href: trackHref(t.artistName, t.trackName),
             value: `${fmtInt(t.meaningfulPlays)} plays`,
             subValue: fmtMinutes(t.listeningMinutes),
           }))}

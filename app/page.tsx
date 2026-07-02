@@ -6,6 +6,7 @@ import { RangeControl } from "@/components/range-control";
 import { RankingList } from "@/components/ranking-list";
 import { resolveRange } from "@/lib/date-range";
 import { fmtInt, fmtMinutes } from "@/lib/format";
+import { artistHref, trackHref } from "@/lib/utils";
 import {
   getListeningOverTime,
   getOverviewStats,
@@ -92,6 +93,7 @@ export default async function OverviewPage({
             title="artists"
             rows={topArtists.map((a) => ({
               name: a.artistName,
+              href: artistHref(a.artistName),
               ...rankValue(a, artistMetric),
             }))}
           />
@@ -108,6 +110,7 @@ export default async function OverviewPage({
             rows={topTracks.map((t) => ({
               name: t.trackName,
               sub: t.artistName,
+              href: trackHref(t.artistName, t.trackName),
               ...rankValue(t, trackMetric),
             }))}
           />

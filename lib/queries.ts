@@ -278,6 +278,130 @@ export function getTopTracks(
     .all(...params, limit) as RankedTrack[];
 }
 
+export interface SkippedTrackRow {
+  artistName: string;
+  trackName: string;
+  meaningfulPlays: number;
+  rawPlays: number;
+  listeningMinutes: number;
+  skips: number;
+  /** Plays where the export recorded whether it was skipped (API-synced rows don't). */
+  skipKnownPlays: number;
+}
+
+const SKIP_COLUMNS = `artist_name       AS artistName,
+              track_name         AS trackName,
+              meaningful_plays   AS meaningfulPlays,
+              raw_plays          AS rawPlays,
+              listening_minutes  AS listeningMinutes,
+              skips,
+              skip_known_plays   AS skipKnownPlays`;
+
+/** Tracks ranked by how often they were skipped. */
+export function getMostSkippedTracks(limit = 20): SkippedTrackRow[] {
+  return db()
+    .prepare(
+      `SELECT ${SKIP_COLUMNS}
+       FROM track_summary
+       WHERE skips > 0
+       ORDER BY skips DESC, skip_known_plays ASC
+       LIMIT ?`,
+    )
+    .all(limit) as SkippedTrackRow[];
+}
+
+/**
+ * Tracks never skipped once across at least `minPlays` plays with known skip
+ * data — the threshold keeps one-listen wonders out.
+ */
+export function getNeverSkippedTracks(
+  minPlays = 25,
+  limit = 20,
+): SkippedTrackRow[] {
+  return db()
+    .prepare(
+      `SELECT ${SKIP_COLUMNS}
+       FROM track_summary
+       WHERE skips = 0 AND skip_known_plays >= ?
+       ORDER BY meaningful_plays DESC, listening_minutes DESC
+       LIMIT ?`,
+    )
+    .all(minPlays, limit) as SkippedTrackRow[];
+}
+
+export interface TrackSummaryRow {
+  artistName: string;
+  trackName: string;
+  albumName: string | null;
+  meaningfulPlays: number;
+  rawPlays: number;
+  listeningMinutes: number;
+  firstPlayedAt: string;
+  lastPlayedAt: string;
+  skips: number;
+  skipKnownPlays: number;
+}
+
+export function getTrackSummary(
+  artistName: string,
+  trackName: string,
+): TrackSummaryRow | null {
+  return (
+    (db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                track_name        AS trackName,
+                album_name        AS albumName,
+                meaningful_plays  AS meaningfulPlays,
+                raw_plays         AS rawPlays,
+                listening_minutes AS listeningMinutes,
+                first_played_at   AS firstPlayedAt,
+                last_played_at    AS lastPlayedAt,
+                skips,
+                skip_known_plays  AS skipKnownPlays
+         FROM track_summary
+         WHERE artist_name = ? AND track_name = ?`,
+      )
+      .get(artistName, trackName) as TrackSummaryRow | undefined) ?? null
+  );
+}
+
+/** One track's listening by calendar year (same shape the artist arc uses). */
+export function getTrackYears(
+  artistName: string,
+  trackName: string,
+): ArtistYearBucket[] {
+  return db()
+    .prepare(
+      `SELECT year,
+              listening_minutes AS listeningMinutes,
+              meaningful_plays  AS meaningfulPlays
+       FROM track_year_summary
+       WHERE artist_name = ? AND track_name = ?
+       ORDER BY year`,
+    )
+    .all(artistName, trackName) as ArtistYearBucket[];
+}
+
+/** One track's listening by month across its whole history (live scan; the
+ * artist index narrows it to that artist's rows). */
+export function getTrackMonths(
+  artistName: string,
+  trackName: string,
+): TimeBucket[] {
+  return db()
+    .prepare(
+      `SELECT strftime('%Y-%m', played_at)  AS bucket,
+              SUM(ms_played) / 60000.0      AS listeningMinutes,
+              SUM(ms_played >= 30000)       AS meaningfulPlays
+       FROM music_listening_events
+       WHERE artist_name = ? AND track_name = ?
+       GROUP BY bucket
+       ORDER BY bucket`,
+    )
+    .all(artistName, trackName) as TimeBucket[];
+}
+
 /** Inclusive range covering one UTC calendar year. */
 export function yearRange(year: number): DateRange {
   return { from: `${year}-01-01`, to: `${year}-12-31` };

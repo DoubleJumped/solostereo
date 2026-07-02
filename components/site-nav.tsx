@@ -9,6 +9,7 @@ const pages = [
   { href: "/", label: "overview" },
   { href: "/year", label: "year in review" },
   { href: "/artists", label: "artists" },
+  { href: "/skips", label: "skips" },
   { href: "/compare", label: "compare" },
   { href: "/playlists", label: "playlists" },
   { href: "/sync", label: "sync" },

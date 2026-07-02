@@ -1,8 +1,12 @@
+import Link from "next/link";
+
 export interface RankingRow {
   name: string;
   sub?: string;
   value: string;
   subValue?: string;
+  /** When set, the name links there (artist/track detail pages). */
+  href?: string;
 }
 
 /**
@@ -38,7 +42,16 @@ export function RankingList({
                 {i + 1}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm">{row.name}</span>
+                {row.href ? (
+                  <Link
+                    href={row.href}
+                    className="block truncate text-sm transition-colors hover:text-primary"
+                  >
+                    {row.name}
+                  </Link>
+                ) : (
+                  <span className="block truncate text-sm">{row.name}</span>
+                )}
                 {row.sub && (
                   <span className="block truncate text-xs text-muted-foreground">
                     {row.sub}
