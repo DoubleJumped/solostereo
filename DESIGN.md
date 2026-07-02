@@ -76,10 +76,10 @@ wordmark language.
 
 ## Wordmark
 
-`components/wordmark.tsx` — `solostereo` in VT323 lowercase with a blinking
-phosphor cursor (`solostereo_`), like a deck waiting for input. Small in the
-nav, large as a hero mark on empty states. No icon/logo besides this.
-The blink respects `prefers-reduced-motion`.
+`components/wordmark.tsx` — `solostereo` in VT323 lowercase with a glowing
+phosphor terminal dot (`solostereo.`). Small in the nav, large as a hero mark
+on empty states. No icon/logo besides this. No blinking — the chrome holds
+still (owner feedback, 2026-07-03).
 
 ## Controls
 

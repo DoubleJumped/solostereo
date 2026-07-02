@@ -60,11 +60,12 @@ export function ArtistBars({
               {i + 1}
             </span>
             <div className="min-w-0">
+              {/* #1 is emphasized with color and weight only — switching fonts
+                  mid-list reads as a glitch, not emphasis */}
               <div
                 className={cn(
                   "truncate text-sm leading-snug",
-                  top &&
-                    "font-display text-base lowercase tracking-tight text-primary",
+                  top && "text-base font-medium text-primary",
                 )}
               >
                 {r.artistName}
