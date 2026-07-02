@@ -57,7 +57,8 @@ export default async function SkipsPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="flex flex-col gap-4">
           <p className="px-3 py-1 text-xs lowercase tracking-wide text-muted-foreground">
-            ranked by total skips · api-synced plays carry no skip data
+            a skip = bailed in the first 30 seconds · api-synced plays carry
+            no skip data
           </p>
           <RankingList
             title="most skipped"

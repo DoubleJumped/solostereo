@@ -284,6 +284,7 @@ export interface SkippedTrackRow {
   meaningfulPlays: number;
   rawPlays: number;
   listeningMinutes: number;
+  /** Early skips only: skipped flag set AND under 30s played (migration 008). */
   skips: number;
   /** Plays where the export recorded whether it was skipped (API-synced rows don't). */
   skipKnownPlays: number;
