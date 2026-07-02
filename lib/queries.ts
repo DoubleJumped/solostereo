@@ -675,6 +675,30 @@ export function getYearArtistTopTracks(
   return map;
 }
 
+export interface RecentTrack {
+  trackName: string;
+  artistName: string;
+  albumName: string | null;
+  playedAt: string;
+}
+
+/** The most recent music plays, newest first (cover-page jukebox). Walks the
+ * played_at index backwards, so cost scales with `limit`, not history size. */
+export function getRecentTracks(limit = 100): RecentTrack[] {
+  return db()
+    .prepare(
+      `SELECT track_name  AS trackName,
+              artist_name AS artistName,
+              album_name  AS albumName,
+              played_at   AS playedAt
+       FROM music_listening_events
+       WHERE track_name IS NOT NULL AND artist_name IS NOT NULL
+       ORDER BY played_at DESC
+       LIMIT ?`,
+    )
+    .all(limit) as RecentTrack[];
+}
+
 /** Years present in the data, descending — drives year selectors. */
 export function getAvailableYears(): number[] {
   // artist_year_summary is materialized and music-only, so this is a tiny
