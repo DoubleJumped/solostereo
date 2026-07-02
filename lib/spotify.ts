@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { openDb } from "./db";
 import { dedupHash } from "./dedup";
+import { refreshSummaries } from "./summaries";
 
 const AUTH_URL = "https://accounts.spotify.com/authorize";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
@@ -336,6 +337,9 @@ export async function syncRecentlyPlayed(): Promise<SyncResult> {
        SET last_synced_at = ?, last_played_at = COALESCE(?, last_played_at)
      WHERE id = 1`,
   ).run(importedAt, newest);
+  // Keep the materialized summary tables (migration 006) in step with the
+  // events just written — pages read those tables, never the raw history.
+  if (inserted > 0) refreshSummaries(db);
   db.close();
 
   return {

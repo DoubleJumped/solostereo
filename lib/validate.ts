@@ -15,10 +15,15 @@ type CheckResult = {
   detail: string;
 };
 
-function viewExists(db: Database.Database, name: string): boolean {
+// Summaries were views until migration 006 materialized them into tables;
+// accept either so the reconciliation checks keep running (they now also
+// prove the materialized copies are in step with the raw events).
+function relationExists(db: Database.Database, name: string): boolean {
   return (
     db
-      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'view' AND name = ?")
+      .prepare(
+        "SELECT 1 FROM sqlite_master WHERE type IN ('view', 'table') AND name = ?",
+      )
       .get(name) !== undefined
   );
 }
@@ -70,7 +75,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
 
   // 3. Yearly totals reconcile to the full-history total.
   {
-    const useView = viewExists(db, "yearly_listening_summary");
+    const useView = relationExists(db, "yearly_listening_summary");
     const yearly = useView
       ? one<{ ms: number | null }>(
           `SELECT SUM(total_ms_played) AS ms FROM yearly_listening_summary`,
@@ -94,8 +99,8 @@ export function runValidation(db: Database.Database): CheckResult[] {
 
   // 3b. Monthly totals reconcile to yearly totals (both views).
   if (
-    viewExists(db, "monthly_listening_summary") &&
-    viewExists(db, "yearly_listening_summary")
+    relationExists(db, "monthly_listening_summary") &&
+    relationExists(db, "yearly_listening_summary")
   ) {
     const m = one<{ ms: number | null }>(
       `SELECT SUM(total_ms_played) AS ms FROM monthly_listening_summary`,
@@ -111,7 +116,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
   }
 
   // 4. Artist summary reconciles to music-event totals.
-  if (viewExists(db, "artist_summary")) {
+  if (relationExists(db, "artist_summary")) {
     const view = one<{ ms: number | null; plays: number | null }>(
       `SELECT SUM(total_ms_played) AS ms, SUM(raw_plays) AS plays FROM artist_summary`,
     );
@@ -135,7 +140,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
   }
 
   // 4b. Artist-by-year totals reconcile to all-time artist totals.
-  if (viewExists(db, "artist_year_summary") && viewExists(db, "artist_summary")) {
+  if (relationExists(db, "artist_year_summary") && relationExists(db, "artist_summary")) {
     const y = one<{ ms: number | null; plays: number | null }>(
       `SELECT SUM(total_ms_played) AS ms, SUM(raw_plays) AS plays
        FROM artist_year_summary`,
@@ -154,7 +159,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
   }
 
   // 5. Album summary reconciles to events with album name populated.
-  if (viewExists(db, "album_summary")) {
+  if (relationExists(db, "album_summary")) {
     const view = one<{ ms: number | null }>(
       `SELECT SUM(total_ms_played) AS ms FROM album_summary`,
     );
@@ -197,7 +202,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
       (parts.music ?? 0) + (parts.podcast ?? 0) + (parts.audiobook ?? 0) ===
         parts.total;
     let detail = `total ${parts.total} = music ${parts.music} + podcast ${parts.podcast} + audiobook ${parts.audiobook}, overlap ${parts.overlap}`;
-    if (ok && viewExists(db, "music_listening_events")) {
+    if (ok && relationExists(db, "music_listening_events")) {
       const inView = one<{ n: number }>(
         `SELECT COUNT(*) AS n FROM music_listening_events
          WHERE ${PODCAST_WHERE} OR ${AUDIOBOOK_WHERE}`,
@@ -216,7 +221,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
   }
 
   // 7. Every music row in rankings has a non-null artist name.
-  if (viewExists(db, "artist_summary")) {
+  if (relationExists(db, "artist_summary")) {
     const r = one<{ n: number }>(
       `SELECT COUNT(*) AS n FROM artist_summary WHERE artist_name IS NULL`,
     );
@@ -236,7 +241,7 @@ export function runValidation(db: Database.Database): CheckResult[] {
   // 8. Spot-check (task 5.3): the top-3 artists' summary rows reconcile to
   // totals recomputed directly from listening_events with inline predicates
   // (no views involved).
-  if (viewExists(db, "artist_summary")) {
+  if (relationExists(db, "artist_summary")) {
     const top3 = db
       .prepare(
         `SELECT artist_name, meaningful_plays, raw_plays, total_ms_played

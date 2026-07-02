@@ -1,6 +1,5 @@
 import type Database from "better-sqlite3";
 import { openDb } from "./db";
-import { IS_DEMO } from "./demo";
 
 /**
  * Server-side data access layer (task 3.1): typed query functions over the
@@ -30,15 +29,17 @@ export interface DateRange {
 export type RankMetric = "minutes" | "plays";
 
 /**
- * The default all-time view (no date filter). In demo mode these reads are
- * served from precomputed/materialized tables built by scripts/build-demo-db.ts
- * instead of scanning the 208k-row music view live — Render's free CPU can't
- * aggregate that per request (better-sqlite3 blocks the event loop). Custom
- * ranges still scan live (rare in the demo). Numbers are identical either way.
+ * The default all-time view (no date filter). All-time reads are served from
+ * the materialized summary tables (migration 006, refreshed on import/sync by
+ * lib/summaries.ts) instead of scanning the 208k-row music view live —
+ * better-sqlite3 blocks the event loop while it aggregates, which costs
+ * ~1.6s per overview load locally and far more on Render's free CPU. Custom
+ * date ranges still scan live; the idx_events_played_at index keeps those
+ * fast. Numbers are identical either way.
  */
 const isAllTime = (r: DateRange): boolean => !r.from && !r.to;
 
-/** Materialized summary column for a metric (demo all-time fast paths). */
+/** Materialized summary column for a metric (all-time fast paths). */
 const METRIC_COLUMN: Record<RankMetric, string> = {
   minutes: "listening_minutes",
   plays: "meaningful_plays",
@@ -75,9 +76,9 @@ export interface OverviewStats {
 }
 
 export function getOverviewStats(range: DateRange = {}): OverviewStats {
-  if (IS_DEMO && isAllTime(range)) {
+  if (isAllTime(range)) {
     const r = db()
-      .prepare("SELECT * FROM demo_overview_alltime")
+      .prepare("SELECT * FROM overview_alltime")
       .get() as OverviewStats & { meaningfulPlays: number | null };
     return {
       ...r,
@@ -118,7 +119,7 @@ export function getListeningOverTime(
   granularity: "month" | "year",
   range: DateRange = {},
 ): TimeBucket[] {
-  if (IS_DEMO && isAllTime(range)) {
+  if (isAllTime(range)) {
     // The materialized monthly/yearly summaries carry music-only columns
     // (music_ms_played, meaningful_plays) that match this query's output.
     const table =
@@ -176,7 +177,7 @@ export function getTopArtists(
   metric: RankMetric = "minutes",
   limit = 10,
 ): RankedArtist[] {
-  if (IS_DEMO && isAllTime(range)) {
+  if (isAllTime(range)) {
     return db()
       .prepare(
         `SELECT artist_name       AS artistName,
@@ -210,7 +211,7 @@ export function getTopAlbums(
   metric: RankMetric = "minutes",
   limit = 10,
 ): RankedAlbum[] {
-  if (IS_DEMO && isAllTime(range)) {
+  if (isAllTime(range)) {
     return db()
       .prepare(
         `SELECT artist_name       AS artistName,
@@ -246,7 +247,7 @@ export function getTopTracks(
   metric: RankMetric = "plays",
   limit = 10,
 ): RankedTrack[] {
-  if (IS_DEMO && isAllTime(range)) {
+  if (isAllTime(range)) {
     return db()
       .prepare(
         `SELECT artist_name       AS artistName,
@@ -290,6 +291,8 @@ export interface MonthTopArtist {
 
 /** The most-listened artist (by time) for each month of a year. */
 export function getTopArtistPerMonth(year: number): MonthTopArtist[] {
+  // Filter by played_at range (not strftime('%Y', ...) = ?) so the
+  // idx_events_played_at index narrows the scan to one year of rows.
   return db()
     .prepare(
       `SELECT month, artist_name AS artistName, minutes AS listeningMinutes
@@ -302,13 +305,13 @@ export function getTopArtistPerMonth(year: number): MonthTopArtist[] {
                   ORDER BY SUM(ms_played) DESC
                 ) AS rn
          FROM music_listening_events
-         WHERE strftime('%Y', played_at) = ? AND artist_name IS NOT NULL
+         WHERE played_at >= ? AND played_at < ? AND artist_name IS NOT NULL
          GROUP BY month, artist_name
        )
        WHERE rn = 1
        ORDER BY month`,
     )
-    .all(String(year)) as MonthTopArtist[];
+    .all(`${year}-01-01`, `${year + 1}-01-01`) as MonthTopArtist[];
 }
 
 export interface ArtistTableRow {
@@ -549,11 +552,12 @@ export function getYearArtistTopTracks(
 
 /** Years present in the data, descending — drives year selectors. */
 export function getAvailableYears(): number[] {
+  // artist_year_summary is materialized and music-only, so this is a tiny
+  // table read instead of an all-history scan.
   return (
     db()
       .prepare(
-        `SELECT DISTINCT CAST(strftime('%Y', played_at) AS INTEGER) AS y
-         FROM music_listening_events ORDER BY y DESC`,
+        `SELECT DISTINCT year AS y FROM artist_year_summary ORDER BY y DESC`,
       )
       .all() as { y: number }[]
   ).map((r) => r.y);

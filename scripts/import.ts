@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { openDb } from "../lib/db";
 import { dedupHash as computeDedupHash } from "../lib/dedup";
+import { refreshSummaries } from "../lib/summaries";
 import { computeDbSummary, printImportSummary } from "../lib/import-summary";
 import { printValidation, runValidation } from "../lib/validate";
 
@@ -164,6 +165,14 @@ export function runImport(source: string): {
       `${filename}: read ${records.length}, inserted ${inserted}, skipped ${
         records.length - inserted
       } duplicate(s)`,
+    );
+  }
+
+  if (totalInserted > 0) {
+    const t0 = performance.now();
+    refreshSummaries(db);
+    console.log(
+      `summary tables refreshed in ${(performance.now() - t0).toFixed(0)} ms`,
     );
   }
 
