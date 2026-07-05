@@ -11,8 +11,8 @@ const HANDS_OFF_MS = 12000;
 
 /** Intrinsic size of /cover-wall.jpg — every overlay is placed in % of this
  * frame, so they stay glued to the painted deck at any viewport size. */
-const IMG_W = 1361;
-const IMG_H = 768;
+const IMG_W = 1672;
+const IMG_H = 941;
 
 /**
  * The cover: the mural photograph fills the screen, and the app projects
@@ -156,11 +156,13 @@ const css = `
 
 /* ---- the LCD readout ------------------------------------------------------ */
 .cv-lcd {
+  /* the text column of the painted screen only — the spectrum analyzer to
+   * its left stays visible paint */
   position: absolute;
-  left: 46.3%;
-  top: 54.5%;
-  width: 20.7%;
-  height: 18.0%;
+  left: 46.77%;
+  top: 48.67%;
+  width: 20.45%;
+  height: 18.28%;
   display: flex;
   align-items: center;
   background: #030503;
@@ -234,9 +236,9 @@ const css = `
   outline: 2px solid #4be387;
   outline-offset: 3px;
 }
-.cv-prev { left: 37.3%; top: 85.5%; width: 4.4%; height: 5.9%; }
-.cv-play { left: 43.6%; top: 85.2%; width: 10.8%; height: 6.4%; }
-.cv-next { left: 56.4%; top: 85.5%; width: 4.6%; height: 5.9%; }
+.cv-prev { left: 36.48%; top: 73.11%; width: 6.46%; height: 8.18%; }
+.cv-play { left: 45.16%; top: 73.11%; width: 6.40%; height: 8.18%; }
+.cv-next { left: 53.83%; top: 73.11%; width: 6.46%; height: 8.18%; }
 
 /* tall/narrow screens: fit the deck by width, blurred wall fills the rest */
 @media (max-aspect-ratio: 4/5) {
