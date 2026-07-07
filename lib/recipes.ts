@@ -120,7 +120,67 @@ function peakWindow(playedAt: number[], isos: string[]): PeakWindow {
   };
 }
 
-export interface ObsessionsParams {
+/**
+ * All meaningful plays (`ms_played >= 30000`), grouped per `spotify_track_uri`.
+ *
+ * Runs the shared ordered scan (`ORDER BY spotify_track_uri, played_at`) once
+ * and yields each track's plays as one consecutive run, ascending by time — the
+ * per-track grouping several recipes (Obsessions, Seasonal, Faithful
+ * favourites, Sleeper hits, Comeback kids, Time capsule) build their analysis
+ * on.
+ */
+function* trackPlayGroups(): Generator<PlayRow[]> {
+  const rows = db()
+    .prepare(
+      `SELECT spotify_track_uri AS uri,
+              played_at,
+              artist_name,
+              track_name,
+              album_name
+       FROM music_listening_events
+       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
+       ORDER BY spotify_track_uri, played_at`,
+    )
+    .all() as PlayRow[];
+
+  let start = 0;
+  while (start < rows.length) {
+    let end = start;
+    const uri = rows[start].uri;
+    while (end < rows.length && rows[end].uri === uri) end++;
+    yield rows.slice(start, end);
+    start = end;
+  }
+}
+
+/**
+ * Rank-ordered pick with a per-artist cap: walk `sorted` (already in the
+ * desired order), keep each item whose artist hasn't yet hit `perArtistCap`,
+ * and stop at `size`. `artistOf` supplies the grouping key (null → ""),
+ * `toCandidate` builds the emitted track (called only for kept items). Shared
+ * by the recipes that finish with a capped top-N selection.
+ */
+function capPerArtist<T>(
+  sorted: T[],
+  size: number,
+  perArtistCap: number,
+  artistOf: (t: T) => string | null,
+  toCandidate: (t: T) => CandidateTrack,
+): CandidateTrack[] {
+  const perArtist = new Map<string, number>();
+  const picked: CandidateTrack[] = [];
+  for (const t of sorted) {
+    if (picked.length >= size) break;
+    const artistKey = artistOf(t) ?? "";
+    const used = perArtist.get(artistKey) ?? 0;
+    if (used >= perArtistCap) continue;
+    perArtist.set(artistKey, used + 1);
+    picked.push(toCandidate(t));
+  }
+  return picked;
+}
+
+interface ObsessionsParams {
   /** Min plays in the peak 30-day window to count as a burst. */
   minBurst: number;
   /** Min distinct calendar days the burst must span. */
@@ -184,28 +244,10 @@ function generateObsessions(params: ObsessionsParams): GeneratedPlaylist[] {
 
   const quietCutoffMs = monthsAgoMs(quietMonths);
 
-  const rows = db()
-    .prepare(
-      `SELECT spotify_track_uri AS uri,
-              played_at,
-              artist_name,
-              track_name,
-              album_name
-       FROM music_listening_events
-       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
-       ORDER BY spotify_track_uri, played_at`,
-    )
-    .all() as PlayRow[];
-
   const qualifying: QualifyingTrack[] = [];
 
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    const uri = rows[start].uri;
-    while (end < rows.length && rows[end].uri === uri) end++;
-    const group = rows.slice(start, end);
-    start = end;
+  for (const group of trackPlayGroups()) {
+    const uri = group[0].uri;
 
     const lifetimePlays = group.length;
     const isos = group.map((r) => r.played_at);
@@ -252,24 +294,20 @@ function generateObsessions(params: ObsessionsParams): GeneratedPlaylist[] {
 
   for (const y of years) {
     const candidates = byYear.get(y)!.sort((a, b) => b.score - a.score);
-    const perArtist = new Map<string, number>();
-    const picked: CandidateTrack[] = [];
-
-    for (const t of candidates) {
-      if (picked.length >= size) break;
-      const artistKey = t.artist ?? "";
-      const used = perArtist.get(artistKey) ?? 0;
-      if (used >= perArtistCap) continue;
-      perArtist.set(artistKey, used + 1);
-      picked.push({
+    const picked = capPerArtist(
+      candidates,
+      size,
+      perArtistCap,
+      (t) => t.artist,
+      (t) => ({
         uri: t.uri,
         artist: t.artist,
         track: t.track,
         album: t.album,
         score: t.score,
         reason: `${t.peakWindowPlays} plays over ${t.burstDays} days, peak ${monthYearLabel(t.startIso)}`,
-      });
-    }
+      }),
+    );
 
     playlists.push({
       name: `Obsessions of ${y}`,
@@ -316,7 +354,7 @@ function mostFrequent(values: (string | null)[]): string | null {
   return best;
 }
 
-export const OBSESSIONS: Recipe<ObsessionsParams> = {
+const OBSESSIONS: Recipe<ObsessionsParams> = {
   key: "obsessions",
   label: "Obsessions",
   description:
@@ -326,7 +364,7 @@ export const OBSESSIONS: Recipe<ObsessionsParams> = {
   generate: generateObsessions,
 };
 
-export interface LapsedLovesParams {
+interface LapsedLovesParams {
   /** Min lifetime meaningful plays to count as a historical love. */
   minPlays: number;
   /** Track must have had no meaningful play in the last N months. */
@@ -437,16 +475,13 @@ function generateLapsedLoves(params: LapsedLovesParams): GeneratedPlaylist[] {
 
   candidates.sort((a, b) => b.score - a.score);
 
-  const perArtist = new Map<string, number>();
-  const picked: CandidateTrack[] = [];
-  for (const c of candidates) {
-    if (picked.length >= size) break;
-    const artistKey = c.artist ?? "";
-    const used = perArtist.get(artistKey) ?? 0;
-    if (used >= perArtistCap) continue;
-    perArtist.set(artistKey, used + 1);
-    picked.push(c);
-  }
+  const picked = capPerArtist(
+    candidates,
+    size,
+    perArtistCap,
+    (c) => c.artist,
+    (c) => c,
+  );
 
   return [
     {
@@ -461,7 +496,7 @@ function generateLapsedLoves(params: LapsedLovesParams): GeneratedPlaylist[] {
   ];
 }
 
-export const LAPSED_LOVES: Recipe<LapsedLovesParams> = {
+const LAPSED_LOVES: Recipe<LapsedLovesParams> = {
   key: "lapsedLoves",
   label: "Lapsed loves",
   description:
@@ -471,7 +506,7 @@ export const LAPSED_LOVES: Recipe<LapsedLovesParams> = {
   generate: generateLapsedLoves,
 };
 
-export interface DeepCutsParams {
+interface DeepCutsParams {
   /** Min total meaningful plays for an artist to be a "favourite". */
   minArtistPlays: number;
   /** Which within-artist play ranks count as deep cuts (1 = the #1 hit). */
@@ -603,17 +638,17 @@ function generateDeepCuts(params: DeepCutsParams): GeneratedPlaylist[] {
 
   candidates.sort((a, b) => b.score - a.score);
 
-  const perArtistCount = new Map<string, number>();
-  const picked: CandidateTrack[] = [];
-  for (const c of candidates) {
-    if (picked.length >= size) break;
-    const used = perArtistCount.get(c.artistKey) ?? 0;
-    if (used >= perArtist) continue;
-    perArtistCount.set(c.artistKey, used + 1);
-    const { artistKey: _artistKey, ...track } = c;
-    void _artistKey;
-    picked.push(track);
-  }
+  const picked = capPerArtist(
+    candidates,
+    size,
+    perArtist,
+    (c) => c.artistKey,
+    (c) => {
+      const { artistKey: _artistKey, ...track } = c;
+      void _artistKey;
+      return track;
+    },
+  );
 
   return [
     {
@@ -628,7 +663,7 @@ function generateDeepCuts(params: DeepCutsParams): GeneratedPlaylist[] {
   ];
 }
 
-export const DEEP_CUTS: Recipe<DeepCutsParams> = {
+const DEEP_CUTS: Recipe<DeepCutsParams> = {
   key: "deepCuts",
   label: "Deep cuts",
   description:
@@ -638,7 +673,7 @@ export const DEEP_CUTS: Recipe<DeepCutsParams> = {
   generate: generateDeepCuts,
 };
 
-export interface OneHitObsessionsParams {
+interface OneHitObsessionsParams {
   /** Min total meaningful plays for an artist to qualify. */
   minArtistPlays: number;
   /** Min share (0..1) of the artist's plays the top track must hold. */
@@ -790,7 +825,7 @@ function generateOneHitObsessions(
   ];
 }
 
-export const ONE_HIT_OBSESSIONS: Recipe<OneHitObsessionsParams> = {
+const ONE_HIT_OBSESSIONS: Recipe<OneHitObsessionsParams> = {
   key: "oneHitObsessions",
   label: "One-hit obsessions",
   description:
@@ -800,7 +835,7 @@ export const ONE_HIT_OBSESSIONS: Recipe<OneHitObsessionsParams> = {
   generate: generateOneHitObsessions,
 };
 
-export interface OldAndNewParams {
+interface OldAndNewParams {
   /** Min total meaningful plays for an artist to count as a "favourite". */
   minArtistPlays: number;
   /** Min distinct UTC calendar years the artist must have been active in. */
@@ -972,7 +1007,7 @@ function generateOldAndNew(params: OldAndNewParams): GeneratedPlaylist[] {
   ];
 }
 
-export const OLD_AND_NEW: Recipe<OldAndNewParams> = {
+const OLD_AND_NEW: Recipe<OldAndNewParams> = {
   key: "oldAndNew",
   label: "Old & new",
   description:
@@ -982,7 +1017,7 @@ export const OLD_AND_NEW: Recipe<OldAndNewParams> = {
   generate: generateOldAndNew,
 };
 
-export interface GatewaySongsParams {
+interface GatewaySongsParams {
   /** Min total meaningful plays for an artist to count as a "favourite". */
   minArtistPlays: number;
   /** Only consider the top N favourite artists by total meaningful plays. */
@@ -1113,7 +1148,7 @@ function generateGatewaySongs(params: GatewaySongsParams): GeneratedPlaylist[] {
   ];
 }
 
-export const GATEWAY_SONGS: Recipe<GatewaySongsParams> = {
+const GATEWAY_SONGS: Recipe<GatewaySongsParams> = {
   key: "gatewaySongs",
   label: "Gateway songs",
   description:
@@ -1141,7 +1176,7 @@ function seasonOfMonth(month: number): Season {
   return "autumn";
 }
 
-export interface SeasonalParams {
+interface SeasonalParams {
   /** Min lifetime meaningful plays for a track to qualify for any season. */
   minPlays: number;
   /** Min share (0..1) of a track's plays that must fall in one season. */
@@ -1192,28 +1227,10 @@ interface SeasonalQualifier {
 function generateSeasonal(params: SeasonalParams): GeneratedPlaylist[] {
   const { minPlays, concentration, size, perArtistCap, season } = params;
 
-  const rows = db()
-    .prepare(
-      `SELECT spotify_track_uri AS uri,
-              played_at,
-              artist_name,
-              track_name,
-              album_name
-       FROM music_listening_events
-       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
-       ORDER BY spotify_track_uri, played_at`,
-    )
-    .all() as PlayRow[];
-
   const qualifiers: SeasonalQualifier[] = [];
 
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    const uri = rows[start].uri;
-    while (end < rows.length && rows[end].uri === uri) end++;
-    const group = rows.slice(start, end);
-    start = end;
+  for (const group of trackPlayGroups()) {
+    const uri = group[0].uri;
 
     const plays = group.length;
     if (plays < minPlays) continue;
@@ -1260,23 +1277,20 @@ function generateSeasonal(params: SeasonalParams): GeneratedPlaylist[] {
       .sort((a, b) => b.score - a.score);
     if (candidates.length === 0) continue;
 
-    const perArtist = new Map<string, number>();
-    const picked: CandidateTrack[] = [];
-    for (const q of candidates) {
-      if (picked.length >= size) break;
-      const artistKey = q.artist ?? "";
-      const used = perArtist.get(artistKey) ?? 0;
-      if (used >= perArtistCap) continue;
-      perArtist.set(artistKey, used + 1);
-      picked.push({
+    const picked = capPerArtist(
+      candidates,
+      size,
+      perArtistCap,
+      (q) => q.artist,
+      (q) => ({
         uri: q.uri,
         artist: q.artist,
         track: q.track,
         album: q.album,
         score: q.score,
         reason: `${Math.round(q.seasonShare * 100)}% of plays in ${s} (${q.seasonPlays} of ${q.plays})`,
-      });
-    }
+      }),
+    );
 
     playlists.push({
       name: `${SEASON_LABEL[s]} songs`,
@@ -1292,7 +1306,7 @@ function generateSeasonal(params: SeasonalParams): GeneratedPlaylist[] {
   return playlists;
 }
 
-export const SEASONAL: Recipe<SeasonalParams> = {
+const SEASONAL: Recipe<SeasonalParams> = {
   key: "seasonal",
   label: "Seasonal fingerprints",
   description:
@@ -1302,7 +1316,7 @@ export const SEASONAL: Recipe<SeasonalParams> = {
   generate: generateSeasonal,
 };
 
-export interface FaithfulFavouritesParams {
+interface FaithfulFavouritesParams {
   /** Min distinct UTC calendar years the track must have been played in. */
   minYears: number;
   /** Min lifetime meaningful plays. */
@@ -1342,28 +1356,10 @@ function generateFaithfulFavourites(
 ): GeneratedPlaylist[] {
   const { minYears, minPlays, size, perArtistCap } = params;
 
-  const rows = db()
-    .prepare(
-      `SELECT spotify_track_uri AS uri,
-              played_at,
-              artist_name,
-              track_name,
-              album_name
-       FROM music_listening_events
-       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
-       ORDER BY spotify_track_uri, played_at`,
-    )
-    .all() as PlayRow[];
-
   const candidates: FaithfulQualifier[] = [];
 
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    const uri = rows[start].uri;
-    while (end < rows.length && rows[end].uri === uri) end++;
-    const group = rows.slice(start, end);
-    start = end;
+  for (const group of trackPlayGroups()) {
+    const uri = group[0].uri;
 
     const plays = group.length;
     if (plays < minPlays) continue;
@@ -1389,17 +1385,17 @@ function generateFaithfulFavourites(
 
   candidates.sort((a, b) => b.score - a.score);
 
-  const perArtist = new Map<string, number>();
-  const picked: CandidateTrack[] = [];
-  for (const c of candidates) {
-    if (picked.length >= size) break;
-    const used = perArtist.get(c.artistKey) ?? 0;
-    if (used >= perArtistCap) continue;
-    perArtist.set(c.artistKey, used + 1);
-    const { artistKey: _artistKey, ...track } = c;
-    void _artistKey;
-    picked.push(track);
-  }
+  const picked = capPerArtist(
+    candidates,
+    size,
+    perArtistCap,
+    (c) => c.artistKey,
+    (c) => {
+      const { artistKey: _artistKey, ...track } = c;
+      void _artistKey;
+      return track;
+    },
+  );
 
   return [
     {
@@ -1414,7 +1410,7 @@ function generateFaithfulFavourites(
   ];
 }
 
-export const FAITHFUL_FAVOURITES: Recipe<FaithfulFavouritesParams> = {
+const FAITHFUL_FAVOURITES: Recipe<FaithfulFavouritesParams> = {
   key: "faithfulFavourites",
   label: "Faithful favourites",
   description:
@@ -1424,7 +1420,7 @@ export const FAITHFUL_FAVOURITES: Recipe<FaithfulFavouritesParams> = {
   generate: generateFaithfulFavourites,
 };
 
-export interface SleeperHitsParams {
+interface SleeperHitsParams {
   /** Min lifetime meaningful plays for a track to be considered. */
   minPlays: number;
   /** Min months between first play and the start of the peak 30-day window. */
@@ -1472,28 +1468,10 @@ interface SleeperQualifier {
 function generateSleeperHits(params: SleeperHitsParams): GeneratedPlaylist[] {
   const { minPlays, minGapMonths, size, perArtistCap } = params;
 
-  const rows = db()
-    .prepare(
-      `SELECT spotify_track_uri AS uri,
-              played_at,
-              artist_name,
-              track_name,
-              album_name
-       FROM music_listening_events
-       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
-       ORDER BY spotify_track_uri, played_at`,
-    )
-    .all() as PlayRow[];
-
   const qualifiers: SleeperQualifier[] = [];
 
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    const uri = rows[start].uri;
-    while (end < rows.length && rows[end].uri === uri) end++;
-    const group = rows.slice(start, end);
-    start = end;
+  for (const group of trackPlayGroups()) {
+    const uri = group[0].uri;
 
     if (group.length < minPlays) continue;
 
@@ -1522,23 +1500,20 @@ function generateSleeperHits(params: SleeperHitsParams): GeneratedPlaylist[] {
 
   qualifiers.sort((a, b) => b.score - a.score);
 
-  const perArtist = new Map<string, number>();
-  const picked: CandidateTrack[] = [];
-  for (const q of qualifiers) {
-    if (picked.length >= size) break;
-    const artistKey = q.artist ?? "";
-    const used = perArtist.get(artistKey) ?? 0;
-    if (used >= perArtistCap) continue;
-    perArtist.set(artistKey, used + 1);
-    picked.push({
+  const picked = capPerArtist(
+    qualifiers,
+    size,
+    perArtistCap,
+    (q) => q.artist,
+    (q) => ({
       uri: q.uri,
       artist: q.artist,
       track: q.track,
       album: q.album,
       score: q.score,
       reason: `first heard ${monthYearLabel(q.firstIso)}, took off ${monthYearLabel(q.peakStartIso)} — ${Math.round(q.gapMonths)} months later`,
-    });
-  }
+    }),
+  );
 
   return [
     {
@@ -1553,7 +1528,7 @@ function generateSleeperHits(params: SleeperHitsParams): GeneratedPlaylist[] {
   ];
 }
 
-export const SLEEPER_HITS: Recipe<SleeperHitsParams> = {
+const SLEEPER_HITS: Recipe<SleeperHitsParams> = {
   key: "sleeperHits",
   label: "Sleeper hits",
   description:
@@ -1563,7 +1538,7 @@ export const SLEEPER_HITS: Recipe<SleeperHitsParams> = {
   generate: generateSleeperHits,
 };
 
-export interface ComebackKidsParams {
+interface ComebackKidsParams {
   /** Min lifetime meaningful plays for a track to be considered. */
   minPlays: number;
   /** A gap longer than this (in ~30.44-day months) starts a new cluster. */
@@ -1621,28 +1596,10 @@ function generateComebackKids(params: ComebackKidsParams): GeneratedPlaylist[] {
   // ~30.44-day months → ms, for splitting plays into time-separated clusters.
   const gapMs = gapMonths * 30.44 * DAY_MS;
 
-  const rows = db()
-    .prepare(
-      `SELECT spotify_track_uri AS uri,
-              played_at,
-              artist_name,
-              track_name,
-              album_name
-       FROM music_listening_events
-       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
-       ORDER BY spotify_track_uri, played_at`,
-    )
-    .all() as PlayRow[];
-
   const qualifiers: ComebackQualifier[] = [];
 
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    const uri = rows[start].uri;
-    while (end < rows.length && rows[end].uri === uri) end++;
-    const group = rows.slice(start, end);
-    start = end;
+  for (const group of trackPlayGroups()) {
+    const uri = group[0].uri;
 
     if (group.length < minPlays) continue;
 
@@ -1694,35 +1651,33 @@ function generateComebackKids(params: ComebackKidsParams): GeneratedPlaylist[] {
 
   qualifiers.sort((a, b) => b.score - a.score);
 
-  const perArtist = new Map<string, number>();
-  const picked: CandidateTrack[] = [];
-  for (const q of qualifiers) {
-    if (picked.length >= size) break;
-    const artistKey = q.artist ?? "";
-    const used = perArtist.get(artistKey) ?? 0;
-    if (used >= perArtistCap) continue;
-    perArtist.set(artistKey, used + 1);
+  const picked = capPerArtist(
+    qualifiers,
+    size,
+    perArtistCap,
+    (q) => q.artist,
+    (q) => {
+      // List each stretch's year; collapse to first–last when there are many.
+      const years = q.clusterYears;
+      const yearList =
+        years.length <= 3
+          ? years.join(", ")
+          : `${years[0]}–${years[years.length - 1]}`;
+      const reason =
+        years.length <= 3
+          ? `played in ${q.clusterCount} stretches: ${yearList}`
+          : `${q.clusterCount} stretches, ${yearList}`;
 
-    // List each stretch's year; collapse to first–last when there are many.
-    const years = q.clusterYears;
-    const yearList =
-      years.length <= 3
-        ? years.join(", ")
-        : `${years[0]}–${years[years.length - 1]}`;
-    const reason =
-      years.length <= 3
-        ? `played in ${q.clusterCount} stretches: ${yearList}`
-        : `${q.clusterCount} stretches, ${yearList}`;
-
-    picked.push({
-      uri: q.uri,
-      artist: q.artist,
-      track: q.track,
-      album: q.album,
-      score: q.score,
-      reason,
-    });
-  }
+      return {
+        uri: q.uri,
+        artist: q.artist,
+        track: q.track,
+        album: q.album,
+        score: q.score,
+        reason,
+      };
+    },
+  );
 
   return [
     {
@@ -1738,7 +1693,7 @@ function generateComebackKids(params: ComebackKidsParams): GeneratedPlaylist[] {
   ];
 }
 
-export const COMEBACK_KIDS: Recipe<ComebackKidsParams> = {
+const COMEBACK_KIDS: Recipe<ComebackKidsParams> = {
   key: "comebackKids",
   label: "Comeback kids",
   description:
@@ -1748,7 +1703,7 @@ export const COMEBACK_KIDS: Recipe<ComebackKidsParams> = {
   generate: generateComebackKids,
 };
 
-export interface TimeCapsuleParams {
+interface TimeCapsuleParams {
   /** Half-width (in days) of the day-of-year window around today. */
   windowDays: number;
   /** Min in-window plays (across past years) for a track to qualify. */
@@ -1813,28 +1768,10 @@ function generateTimeCapsule(params: TimeCapsuleParams): GeneratedPlaylist[] {
     timeZone: "UTC",
   });
 
-  const rows = db()
-    .prepare(
-      `SELECT spotify_track_uri AS uri,
-              played_at,
-              artist_name,
-              track_name,
-              album_name
-       FROM music_listening_events
-       WHERE ms_played >= 30000 AND spotify_track_uri IS NOT NULL
-       ORDER BY spotify_track_uri, played_at`,
-    )
-    .all() as PlayRow[];
-
   const qualifiers: TimeCapsuleQualifier[] = [];
 
-  let start = 0;
-  while (start < rows.length) {
-    let end = start;
-    const uri = rows[start].uri;
-    while (end < rows.length && rows[end].uri === uri) end++;
-    const group = rows.slice(start, end);
-    start = end;
+  for (const group of trackPlayGroups()) {
+    const uri = group[0].uri;
 
     let windowPlays = 0;
     const years = new Set<number>();
@@ -1866,23 +1803,20 @@ function generateTimeCapsule(params: TimeCapsuleParams): GeneratedPlaylist[] {
 
   qualifiers.sort((a, b) => b.score - a.score);
 
-  const perArtist = new Map<string, number>();
-  const picked: CandidateTrack[] = [];
-  for (const q of qualifiers) {
-    if (picked.length >= size) break;
-    const artistKey = q.artist ?? "";
-    const used = perArtist.get(artistKey) ?? 0;
-    if (used >= perArtistCap) continue;
-    perArtist.set(artistKey, used + 1);
-    picked.push({
+  const picked = capPerArtist(
+    qualifiers,
+    size,
+    perArtistCap,
+    (q) => q.artist,
+    (q) => ({
       uri: q.uri,
       artist: q.artist,
       track: q.track,
       album: q.album,
       score: q.score,
       reason: `you played this around mid-${todayLabel} in ${q.years.join(", ")}`,
-    });
-  }
+    }),
+  );
 
   return [
     {
@@ -1898,7 +1832,7 @@ function generateTimeCapsule(params: TimeCapsuleParams): GeneratedPlaylist[] {
   ];
 }
 
-export const TIME_CAPSULE: Recipe<TimeCapsuleParams> = {
+const TIME_CAPSULE: Recipe<TimeCapsuleParams> = {
   key: "timeCapsule",
   label: "Time capsule: this week, years past",
   description:
@@ -1908,7 +1842,7 @@ export const TIME_CAPSULE: Recipe<TimeCapsuleParams> = {
   generate: generateTimeCapsule,
 };
 
-export interface ArtistTopParams {
+interface ArtistTopParams {
   /** Exact artist name as it appears in my listening history. */
   artist: string;
   /** Max tracks — capped lower when I haven't played that many by them. */
@@ -2008,7 +1942,7 @@ function generateArtistTop(params: ArtistTopParams): GeneratedPlaylist[] {
   ];
 }
 
-export const ARTIST_TOP: Recipe<ArtistTopParams> = {
+const ARTIST_TOP: Recipe<ArtistTopParams> = {
   key: "artistTop",
   label: "Artist top tracks",
   description:

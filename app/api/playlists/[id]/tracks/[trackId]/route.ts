@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { removeTrack, setIncluded } from "@/lib/playlists";
+import { parseId, removeTrack, setIncluded } from "@/lib/playlists";
 
 /**
  * Single-track mutations for the editor (task 8B.3).
@@ -11,11 +11,6 @@ import { removeTrack, setIncluded } from "@/lib/playlists";
  * layer scopes its writes by track id, so we validate ids are numeric and let
  * the (idempotent) mutation run. Bad input → 400 `{ error }`.
  */
-
-function parseId(raw: string): number | null {
-  const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
 
 export async function PATCH(
   request: Request,

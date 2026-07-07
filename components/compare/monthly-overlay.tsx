@@ -9,12 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { fmtInt } from "@/lib/format";
-
-const MONTH_NAMES = [
-  "jan", "feb", "mar", "apr", "may", "jun",
-  "jul", "aug", "sep", "oct", "nov", "dec",
-];
+import { fmtInt, MONTHS } from "@/lib/format";
 
 export interface OverlayPoint {
   month: number; // 1..12
@@ -38,7 +33,7 @@ function OverlayTooltip({
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2">
       <div className="font-display text-sm lowercase">
-        {MONTH_NAMES[p.month - 1]}
+        {MONTHS[p.month - 1]}
       </div>
       <div className="mt-0.5 flex flex-col text-xs">
         <span>
@@ -95,7 +90,7 @@ export function MonthlyOverlay({
             <CartesianGrid vertical={false} stroke="var(--color-border)" />
             <XAxis
               dataKey="month"
-              tickFormatter={(m: number) => MONTH_NAMES[m - 1]}
+              tickFormatter={(m: number) => MONTHS[m - 1]}
               tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
               axisLine={{ stroke: "var(--color-border)" }}
               tickLine={false}

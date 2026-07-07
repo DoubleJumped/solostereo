@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { addTrackByUri, getPlaylist, reorderTracks } from "@/lib/playlists";
+import {
+  addTrackByUri,
+  getPlaylist,
+  parseId,
+  reorderTracks,
+} from "@/lib/playlists";
 
 /**
  * Track-collection mutations for one playlist (tasks 8B.3 / 8B.4).
@@ -12,11 +17,6 @@ import { addTrackByUri, getPlaylist, reorderTracks } from "@/lib/playlists";
  *
  * `params` is a promise and must be awaited. Bad input → 400 `{ error }`.
  */
-
-function parseId(raw: string): number | null {
-  const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
 
 export async function POST(
   request: Request,

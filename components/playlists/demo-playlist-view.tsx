@@ -1,5 +1,6 @@
 import { fmtInt } from "@/lib/format";
 import type { PlaylistTrackRow } from "@/lib/playlists";
+import { TrackInfo, trackRowClass } from "@/components/playlists/track-info";
 
 /**
  * Read-only tracklist shown in demo mode in place of the interactive
@@ -26,33 +27,8 @@ export function DemoPlaylistView({ tracks }: { tracks: PlaylistTrackRow[] }) {
       ) : (
         <ul className="overflow-hidden rounded-lg border border-border">
           {tracks.map((t, i) => (
-            <li
-              key={t.id}
-              className={`flex items-center gap-3 border-b border-border bg-card px-4 py-3 last:border-b-0 ${
-                t.included ? "" : "opacity-40"
-              }`}
-            >
-              <span className="tabular w-7 shrink-0 text-right text-xs text-muted-foreground">
-                {i + 1}
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-sm lowercase">
-                  {t.track ?? "unknown track"}
-                  {t.artist ? (
-                    <span className="text-muted-foreground"> — {t.artist}</span>
-                  ) : null}
-                </span>
-                {t.album && (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {t.album}
-                  </span>
-                )}
-                {t.reason && (
-                  <span className="truncate text-xs italic text-muted-foreground">
-                    {t.reason}
-                  </span>
-                )}
-              </div>
+            <li key={t.id} className={trackRowClass(t.included)}>
+              <TrackInfo track={t} index={i} />
             </li>
           ))}
         </ul>

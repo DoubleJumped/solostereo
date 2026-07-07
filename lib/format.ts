@@ -4,7 +4,8 @@ export function fmtInt(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
-const MONTHS = [
+/** Lowercase month abbreviations, indexed 0–11. */
+export const MONTHS = [
   "jan", "feb", "mar", "apr", "may", "jun",
   "jul", "aug", "sep", "oct", "nov", "dec",
 ];

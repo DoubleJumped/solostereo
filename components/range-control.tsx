@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { RangePreset } from "@/lib/date-range";
-import { cn } from "@/lib/utils";
+import { chipClass } from "@/lib/utils";
 
 const PRESETS: { key: RangePreset; label: string }[] = [
   { key: "all", label: "all time" },
@@ -66,11 +66,8 @@ export function RangeControl({ active }: { active: RangePreset }) {
           <button
             key={key}
             onClick={() => setPreset(key)}
-            className={cn(
-              "rounded-sm border px-3 py-0.5 transition-colors",
-              active === key || (key === "custom" && customOpen)
-                ? "border-primary/60 bg-primary/15 text-primary"
-                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+            className={chipClass(
+              active === key || (key === "custom" && customOpen),
             )}
           >
             {label}

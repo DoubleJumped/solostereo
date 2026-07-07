@@ -30,7 +30,7 @@ export default async function ArtistDetailPage({
   const months = getArtistMonths(artistName);
   const albums = getArtistAlbums(artistName, 10);
   const tracks = getArtistTracks(artistName, 10);
-  const allYears = [...getAvailableYears()].sort((a, b) => a - b);
+  const allYears = getAvailableYears().reverse(); // ascending for the timeline
 
   const stats: { value: string; label: string }[] = [
     { value: fmtInt(summary.meaningfulPlays), label: "plays" },

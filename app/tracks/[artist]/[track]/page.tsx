@@ -28,7 +28,7 @@ export default async function TrackDetailPage({
 
   const years = getTrackYears(artistName, trackName);
   const months = getTrackMonths(artistName, trackName);
-  const allYears = [...getAvailableYears()].sort((a, b) => a - b);
+  const allYears = getAvailableYears().reverse(); // ascending for the timeline
   const moreByArtist = getArtistTracks(artistName, 11).filter(
     (t) => t.trackName !== trackName,
   );

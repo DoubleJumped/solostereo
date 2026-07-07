@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { fmtDate, fmtInt } from "@/lib/format";
-import { getPlaylist, getPlaylistTracks } from "@/lib/playlists";
+import { getPlaylist, getPlaylistTracks, parseId } from "@/lib/playlists";
 import { RECIPES } from "@/lib/recipes";
 import { PlaylistEditor } from "@/components/playlists/playlist-editor";
 import { DemoPlaylistView } from "@/components/playlists/demo-playlist-view";
+import { StatusBadge } from "@/components/playlists/status-badge";
 import { IS_DEMO } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +32,8 @@ export default async function PlaylistDetailPage({
   // `params` is a promise in this Next.js version — must be awaited.
   params: Promise<{ id: string }>;
 }) {
-  const { id: rawId } = await params;
-  const id = Number(rawId);
-  if (!Number.isInteger(id) || id <= 0) notFound();
+  const id = parseId((await params).id);
+  if (id === null) notFound();
 
   const playlist = getPlaylist(id);
   if (!playlist) notFound();
@@ -88,20 +88,5 @@ export default async function PlaylistDetailPage({
         />
       )}
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const pushed = status === "pushed";
-  return (
-    <span
-      className={
-        pushed
-          ? "rounded-sm border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs lowercase tracking-wide text-primary"
-          : "rounded-sm border border-border px-2.5 py-0.5 text-xs lowercase tracking-wide text-muted-foreground"
-      }
-    >
-      {status}
-    </span>
   );
 }

@@ -29,6 +29,12 @@ function now(): string {
   return new Date().toISOString();
 }
 
+/** Parse a playlist/track id route param, or null if it isn't a positive integer. */
+export function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 /** A playlist with its track counts, for list views. */
 export interface PlaylistSummary {
   id: number;

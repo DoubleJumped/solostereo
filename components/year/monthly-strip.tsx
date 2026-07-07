@@ -1,10 +1,5 @@
-import { fmtInt } from "@/lib/format";
+import { fmtInt, MONTHS } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const MONTH_ABBREV = [
-  "jan", "feb", "mar", "apr", "may", "jun",
-  "jul", "aug", "sep", "oct", "nov", "dec",
-];
 
 export interface MonthCell {
   month: number; // 1..12
@@ -40,7 +35,7 @@ export function MonthlyStrip({ months }: { months: MonthCell[] }) {
                     isPeak ? "bg-primary" : "bg-primary/25",
                   )}
                   style={{ height: `${(m.hours / max) * 100}%` }}
-                  title={`${MONTH_ABBREV[m.month - 1]}: ${fmtInt(m.hours)} h`}
+                  title={`${MONTHS[m.month - 1]}: ${fmtInt(m.hours)} h`}
                 />
               </div>
               <div
@@ -52,7 +47,7 @@ export function MonthlyStrip({ months }: { months: MonthCell[] }) {
                 {fmtInt(m.hours)}h
               </div>
               <div className="text-[10px] lowercase tracking-widest text-muted-foreground">
-                {MONTH_ABBREV[m.month - 1]}
+                {MONTHS[m.month - 1]}
               </div>
               <div
                 className={cn(

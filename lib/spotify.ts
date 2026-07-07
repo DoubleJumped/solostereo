@@ -14,11 +14,11 @@ const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played";
  * required to create/update playlists on the owner's real account — granting
  * them needs a reconnect, since the originally-connected account is read-only.
  */
-export const SPOTIFY_SCOPES =
+const SPOTIFY_SCOPES =
   "user-read-recently-played user-read-email playlist-modify-public playlist-modify-private";
 
 /** Rows synced from the API are tagged with this source filename. */
-export const API_SOURCE = "spotify-api";
+const API_SOURCE = "spotify-api";
 
 export interface SpotifyConfig {
   clientId: string;

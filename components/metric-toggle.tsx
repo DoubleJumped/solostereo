@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { chipClass } from "@/lib/utils";
 
 /**
  * plays ↔ minutes ranking toggle, persisted in the `metric` search param so
@@ -28,12 +28,7 @@ export function MetricToggle() {
         <button
           key={m}
           onClick={() => setMetric(m)}
-          className={cn(
-            "rounded-sm border px-3 py-0.5 transition-colors",
-            active === m
-              ? "border-primary/60 bg-primary/15 text-primary"
-              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
-          )}
+          className={chipClass(active === m)}
         >
           by {m}
         </button>

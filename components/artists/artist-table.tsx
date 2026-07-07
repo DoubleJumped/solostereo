@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ArtistTableRow } from "@/lib/queries";
 import { fmtDate, fmtInt, fmtMinutes } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { artistHref, cn } from "@/lib/utils";
 
 type SortKey =
   | "listeningMinutes"
@@ -133,7 +133,7 @@ export function ArtistTable({ rows }: { rows: ArtistTableRow[] }) {
               >
                 <td className="max-w-[14rem] truncate px-4 py-2">
                   <Link
-                    href={`/artists/${encodeURIComponent(r.artistName)}`}
+                    href={artistHref(r.artistName)}
                     className="font-medium text-primary transition-colors hover:text-primary/70"
                   >
                     {r.artistName}

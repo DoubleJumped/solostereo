@@ -3,6 +3,7 @@ import {
   getIncludedTracks,
   getPlaylist,
   markPushed,
+  parseId,
 } from "@/lib/playlists";
 import {
   createSpotifyPlaylist,
@@ -35,11 +36,6 @@ import {
  *
  * `params` is a promise in this Next.js version and must be awaited.
  */
-
-function parseId(raw: string): number | null {
-  const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
 
 export async function POST(
   _request: Request,

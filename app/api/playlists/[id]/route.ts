@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   deletePlaylist,
   getPlaylist,
+  parseId,
   renamePlaylist,
   setPublic,
 } from "@/lib/playlists";
@@ -16,12 +17,6 @@ import {
  * `params` is a promise in this Next.js version and must be awaited. Bad ids or
  * malformed bodies return 400 `{ error }`, matching the existing convention.
  */
-
-/** Parse a numeric playlist id, or null if it isn't a positive integer. */
-function parseId(raw: string): number | null {
-  const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
 
 export async function PATCH(
   request: Request,

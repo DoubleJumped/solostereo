@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fmtInt } from "@/lib/format";
 import type { LocalTrack, PlaylistTrackRow } from "@/lib/playlists";
+import { TrackInfo, trackRowClass } from "@/components/playlists/track-info";
 
 /** The slim playlist shape the editor needs (the page passes this down). */
 interface EditablePlaylist {
@@ -373,33 +374,8 @@ function TrackRow({
   onMove: (dir: -1 | 1) => void;
 }) {
   return (
-    <li
-      className={`flex items-center gap-3 border-b border-border bg-card px-4 py-3 last:border-b-0 ${
-        track.included ? "" : "opacity-40"
-      }`}
-    >
-      <span className="tabular w-7 shrink-0 text-right text-xs text-muted-foreground">
-        {index + 1}
-      </span>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-sm lowercase">
-          {track.track ?? "unknown track"}
-          {track.artist ? (
-            <span className="text-muted-foreground"> — {track.artist}</span>
-          ) : null}
-        </span>
-        {track.album && (
-          <span className="truncate text-xs text-muted-foreground">
-            {track.album}
-          </span>
-        )}
-        {track.reason && (
-          <span className="truncate text-xs italic text-muted-foreground">
-            {track.reason}
-          </span>
-        )}
-      </div>
+    <li className={trackRowClass(track.included)}>
+      <TrackInfo track={track} index={index} />
 
       <span className="hidden shrink-0 text-xs lowercase tracking-widest text-muted-foreground sm:inline">
         {track.addedManually
