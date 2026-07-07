@@ -33,11 +33,20 @@ export type RankMetric = "minutes" | "plays";
  * the materialized summary tables (migration 006, refreshed on import/sync by
  * lib/summaries.ts) instead of scanning the 208k-row music view live —
  * better-sqlite3 blocks the event loop while it aggregates, which costs
- * ~1.6s per overview load locally and far more on Render's free CPU. Custom
- * date ranges still scan live; the idx_events_played_at index keeps those
- * fast. Numbers are identical either way.
+ * ~1.6s per overview load locally and far more on Render's free CPU. Whole
+ * calendar years (every /year and /compare load) are likewise served from the
+ * *_year_summary tables. Other custom ranges still scan live; the
+ * idx_events_played_at index keeps those fast. Numbers are identical either
+ * way.
  */
 const isAllTime = (r: DateRange): boolean => !r.from && !r.to;
+
+/** The calendar year a range covers exactly (yearRange(y) shape), or null. */
+function rangeYear(r: DateRange): number | null {
+  if (!r.from || !r.to) return null;
+  const m = /^(\d{4})-01-01$/.exec(r.from);
+  return m && r.to === `${m[1]}-12-31` ? Number(m[1]) : null;
+}
 
 /** Materialized summary column for a metric (all-time fast paths). */
 const METRIC_COLUMN: Record<RankMetric, string> = {
@@ -119,7 +128,8 @@ export function getListeningOverTime(
   granularity: "month" | "year",
   range: DateRange = {},
 ): TimeBucket[] {
-  if (isAllTime(range)) {
+  const year = rangeYear(range);
+  if (isAllTime(range) || year !== null) {
     // The materialized monthly/yearly summaries carry music-only columns
     // (music_ms_played, meaningful_plays) that match this query's output.
     const table =
@@ -133,9 +143,10 @@ export function getListeningOverTime(
                 music_ms_played / 60000.0     AS listeningMinutes,
                 meaningful_plays              AS meaningfulPlays
          FROM ${table}
+         ${year !== null ? "WHERE year = ?" : ""}
          ORDER BY ${bucketCol}`,
       )
-      .all() as TimeBucket[];
+      .all(...(year !== null ? [year] : [])) as TimeBucket[];
   }
   const fmt = granularity === "month" ? "%Y-%m" : "%Y";
   const { sql, params } = rangeWhere(range);
@@ -190,6 +201,21 @@ export function getTopArtists(
       )
       .all(limit) as RankedArtist[];
   }
+  const year = rangeYear(range);
+  if (year !== null) {
+    return db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                meaningful_plays   AS meaningfulPlays,
+                raw_plays          AS rawPlays,
+                listening_minutes  AS listeningMinutes
+         FROM artist_year_summary
+         WHERE year = ?
+         ORDER BY ${METRIC_COLUMN[metric]} DESC
+         LIMIT ?`,
+      )
+      .all(year, limit) as RankedArtist[];
+  }
   const { sql, params } = rangeWhere(range);
   return db()
     .prepare(
@@ -224,6 +250,22 @@ export function getTopAlbums(
          LIMIT ?`,
       )
       .all(limit) as RankedAlbum[];
+  }
+  const year = rangeYear(range);
+  if (year !== null) {
+    return db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                album_name         AS albumName,
+                meaningful_plays   AS meaningfulPlays,
+                raw_plays          AS rawPlays,
+                listening_minutes  AS listeningMinutes
+         FROM album_year_summary
+         WHERE year = ?
+         ORDER BY ${METRIC_COLUMN[metric]} DESC
+         LIMIT ?`,
+      )
+      .all(year, limit) as RankedAlbum[];
   }
   const { sql, params } = rangeWhere(range);
   return db()
@@ -260,6 +302,22 @@ export function getTopTracks(
          LIMIT ?`,
       )
       .all(limit) as RankedTrack[];
+  }
+  const year = rangeYear(range);
+  if (year !== null) {
+    return db()
+      .prepare(
+        `SELECT artist_name       AS artistName,
+                track_name         AS trackName,
+                meaningful_plays   AS meaningfulPlays,
+                raw_plays          AS rawPlays,
+                listening_minutes  AS listeningMinutes
+         FROM track_year_summary
+         WHERE year = ?
+         ORDER BY ${METRIC_COLUMN[metric]} DESC
+         LIMIT ?`,
+      )
+      .all(year, limit) as RankedTrack[];
   }
   const { sql, params } = rangeWhere(range);
   return db()
@@ -442,7 +500,6 @@ export function getTopArtistPerMonth(year: number): MonthTopArtist[] {
 export interface ArtistTableRow {
   artistName: string;
   meaningfulPlays: number;
-  rawPlays: number;
   listeningMinutes: number;
   firstPlayedAt: string;
   lastPlayedAt: string;
@@ -452,13 +509,12 @@ export interface ArtistTableRow {
   topTrack: string | null;
 }
 
-/** Every artist with the full §6 column set, for the explorer table. */
+/** Every artist with the §6 columns the explorer table renders. */
 export function getArtistTable(): ArtistTableRow[] {
   return db()
     .prepare(
       `SELECT s.artist_name              AS artistName,
               s.meaningful_plays         AS meaningfulPlays,
-              s.raw_plays                AS rawPlays,
               s.listening_minutes        AS listeningMinutes,
               s.first_played_at          AS firstPlayedAt,
               s.last_played_at           AS lastPlayedAt,
