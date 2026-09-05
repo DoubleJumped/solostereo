@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Three moving homepage studies for Solo Stereo.">
+  <title>Solo Stereo — motion studies</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23080b08'/%3E%3Ccircle cx='20' cy='20' r='10' fill='%23b1ff46'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="concepts.css">
+  <script src="concepts.js" defer></script>
+</head>
+<body data-concept="core">
+  <a class="skip-link" href="#stage">Skip to concept</a>
+  <header class="studio-bar">
+    <a class="studio-brand" href="#core" aria-label="Solo Stereo concept gallery">ss<span class="brand-dot">.</span><span class="studio-caption">HOMEPAGE STUDIES</span></a>
+    <nav class="concept-tabs" aria-label="Choose a homepage concept">
+      <button data-select="core" aria-pressed="true"><span>01</span> Liquid Core</button>
+      <button data-select="tape" aria-pressed="false"><span>02</span> Living Tape</button>
+      <button data-select="bloom" aria-pressed="false"><span>03</span> Signal Bloom</button>
+    </nav>
+    <button id="pause" class="motion-button" aria-pressed="false"><span class="pause-icon" aria-hidden="true">Ⅱ</span><span id="pause-label">Pause motion</span></button>
+  </header>
+
+  <main id="stage" tabindex="-1">
+    <section id="core" class="concept core" aria-label="Liquid Core homepage concept">
+      <div class="core-atmosphere" aria-hidden="true"></div>
+      <header class="site-header">
+        <a class="wordmark" href="#core">solo stereo<span>®</span></a>
+        <span class="header-note"><i class="status-dot"></i> A PERSONAL LISTENING ARCHIVE</span>
+        <a class="text-link" href="/overview">Explore archive <span aria-hidden="true">↗</span></a>
+      </header>
+      <div class="core-heading">
+        <p class="eyebrow">EVERY ERA. EVERY OBSESSION.</p>
+        <h1>Your music.<br><em>Still alive.</em></h1>
+        <p class="intro">A decade of listening, with a pulse.</p>
+      </div>
+      <div class="receiver-wrap">
+        <div class="receiver">
+          <img src="assets/receiver.png" width="1536" height="1024" alt="A dark brushed-aluminum stereo receiver with a glowing liquid-green display" fetchpriority="high">
+          <div class="receiver-screen">
+            <canvas data-fluid="core" aria-label="Slowly flowing green plasma inside the stereo display"></canvas>
+            <div class="screen-vignette" aria-hidden="true"></div>
+            <span class="screen-tag">SS / ARCHIVE ENGINE</span>
+            <span class="screen-bottom">MEMORIES IN MOTION <span class="tiny-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></span>
+          </div>
+          <button class="receiver-power energy-control" aria-label="Send a pulse through the liquid core" title="Send a pulse"></button>
+          <button class="receiver-dial energy-control" aria-label="Turn up the liquid energy" title="Turn up the energy"></button>
+        </div>
+        <div class="hardware-caption"><span>ANALOG SOUL</span><span class="hairline"></span><span>DIGITAL MEMORY</span></div>
+      </div>
+      <div class="core-bottom">
+        <div class="recent-card"><span class="record-dot" aria-hidden="true"></span><div><span class="eyebrow">FROM YOUR RECENT ROTATION</span><p class="track-title">Where Is My Mind?</p><span class="track-artist">Pixies · Surfer Rosa</span></div><div class="track-buttons"><button data-step="-1" aria-label="Previous recent track">‹</button><button data-step="1" aria-label="Next recent track">›</button></div></div>
+        <a href="/overview" class="enter-button">Enter the archive <span aria-hidden="true">↗</span></a>
+      </div>
+      <footer class="page-footer"><span>EST. 2014 / STILL RECORDING</span><span>MADE OF EVERYTHING YOU PLAYED.</span></footer>
+    </section>
+
+    <section id="tape" class="concept tape" hidden aria-label="Living Tape homepage concept">
+      <header class="site-header">
+        <a class="wordmark" href="#tape">solo stereo<span>®</span></a>
+        <span class="header-note">THE PERSONAL COLLECTION / VOL. 01</span>
+        <a class="text-link" href="/overview">Open collection <span aria-hidden="true">↗</span></a>
+      </header>
+      <h1 class="sr-only">Living Tape — your listening history, playing back</h1>
+      <div class="tape-deck-wrap">
+        <div class="tape-deck">
+          <img src="assets/living-tape-deck.png" width="1536" height="1024" alt="A straight-on black vintage stereo with a translucent green cassette loaded in its front bay" loading="lazy">
+          <div class="tape-paper-label" aria-label="Track on the cassette">
+            <div class="tape-label-line"><span class="tape-label-text"><span class="tape-song-title">Where Is My Mind?</span><span aria-hidden="true"> — </span><span class="tape-song-artist">Pixies</span></span></div>
+          </div>
+          <div class="deck-fluid"><canvas data-fluid="tape" aria-label="Green fluid moving inside the cassette reels"></canvas></div>
+          <div class="deck-reel deck-reel-left" aria-hidden="true"></div>
+          <div class="deck-reel deck-reel-right" aria-hidden="true"></div>
+          <button class="deck-previous" data-step="-1" aria-label="Rewind to previous recent track"></button>
+          <a class="deck-play" href="/overview" aria-label="Play — enter the archive"></a>
+          <button class="deck-next" data-step="1" aria-label="Advance to next recent track"></button>
+        </div>
+      </div>
+      <div class="tape-transport">
+        <div class="tape-status"><i class="status-dot"></i><span>RECENT ROTATION</span><span class="tape-position">01 / 05</span></div>
+        <div class="tape-controls"><button data-step="-1" aria-label="Previous recent track">‹</button><a href="/overview" class="enter-button">Enter the archive <span aria-hidden="true">↗</span></a><button data-step="1" aria-label="Next recent track">›</button></div>
+      </div>
+      <footer class="tape-footer"><span>HIGH FIDELITY MEMORIES</span><span>2014 <span class="tape-rule"></span> NOW</span><span>PLEASE REWIND.</span></footer>
+    </section>
+
+    <section id="bloom" class="concept bloom" hidden aria-label="Signal Bloom homepage concept">
+      <div class="bloom-haze" aria-hidden="true"></div>
+      <header class="site-header">
+        <a class="wordmark" href="#bloom">solo stereo<span>®</span></a>
+        <span class="header-note"><i class="status-dot"></i> THE ARCHIVE IS ALIVE</span>
+        <a class="text-link" href="/overview">Enter archive <span aria-hidden="true">↗</span></a>
+      </header>
+      <div class="mural-wrap">
+        <div class="mural">
+          <img src="assets/mural.jpg" width="1672" height="941" alt="The Solo Stereo graffiti wall and vintage deck, with an organic green energy field inside its screen" loading="lazy">
+          <div class="mural-screen"><canvas data-fluid="bloom" aria-label="An organic green energy bloom flowing inside the graffiti stereo"></canvas><div class="screen-vignette" aria-hidden="true"></div><span class="bloom-screen-label">SS. <span>SIGNAL FOUND</span></span></div>
+          <div class="tuner-signal" aria-hidden="true"></div>
+          <button class="mural-pulse energy-control" aria-label="Pulse the green signal">↯</button>
+        </div>
+      </div>
+      <div class="bloom-bottom"><div><p class="eyebrow">SOME THINGS STAY WITH YOU.</p><h1>Find your <em>frequency.</em></h1></div><a href="/overview" class="enter-button">Follow the signal <span aria-hidden="true">↗</span></a></div>
+      <footer class="page-footer"><span class="recent-inline">RECENTLY PLAYED <b class="track-title">Where Is My Mind?</b><span class="track-artist">Pixies · Surfer Rosa</span></span><span>UNDERGROUND / ALWAYS ON</span></footer>
+    </section>
+  </main>
+
+  <aside class="study-note" aria-label="About this concept"><div><span id="study-number">01 / 03</span><p id="study-description">Liquid Core — a precision hi-fi shell containing a living, liquid-green heart.</p></div><button id="energy-button">Pulse the energy <span aria-hidden="true">↯</span></button><span class="sample-label">Concept preview · sample tracks · no audio</span></aside>
+  <p id="motion-status" class="sr-only" aria-live="polite"></p>
+</body>
+</html>

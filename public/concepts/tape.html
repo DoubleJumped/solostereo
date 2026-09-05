@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex,nofollow">
+  <title>solo stereo</title>
+  <link rel="stylesheet" href="tape.css">
+  <link rel="stylesheet" href="stereo-meter.css">
+  <script src="tape.js" defer></script>
+</head>
+<body>
+  <main class="room" aria-label="Solo Stereo. Press the stereo's play button to enter the archive.">
+    <div class="stereo">
+      <img class="hardware" src="assets/living-tape-branded.png" width="1536" height="1024" alt="A black stereo with solo stereo engraved into its face and a green cassette inside" fetchpriority="high">
+      <div class="liquid-window" aria-hidden="true"><canvas id="fluid"></canvas></div>
+      <div class="paper-label"><span id="tape-label">Where Is My Mind? — Pixies</span></div>
+      <div class="meter-face" role="img" aria-label="Animated left and right stereo level meters; ambient motion, not live audio measurement">
+        <div class="meter-layout" aria-hidden="true">
+          <span class="meter-unit">dB</span>
+          <div class="meter-scale"><span style="left:0%">−30</span><span style="left:30.3%">−20</span><span style="left:60.6%">−10</span><span style="left:75.8%">−5</span><span style="left:90.9%">0</span><span style="left:100%">+3</span></div>
+          <span class="meter-channel">L</span><div class="meter-track"><span class="meter-fill" id="meter-left"></span><span class="meter-peak" id="peak-left"></span></div>
+          <span class="meter-channel">R</span><div class="meter-track"><span class="meter-fill" id="meter-right"></span><span class="meter-peak" id="peak-right"></span></div>
+        </div>
+      </div>
+      <button class="transport previous" id="previous" aria-label="Previous recent track"></button>
+      <a class="transport play" href="/overview" target="_top" aria-label="Play — enter the archive"></a>
+      <button class="transport next" id="next" aria-label="Next recent track"></button>
+      <button class="transport stop" id="stop" aria-label="Pause animation" aria-pressed="false"></button>
+    </div>
+  </main>
+</body>
+</html>

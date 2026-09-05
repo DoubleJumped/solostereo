@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="653" height="405" viewBox="0 0 653 405">
+  <defs>
+    <radialGradient id="edge"><stop offset="0.58" stop-color="white"/><stop offset="1" stop-color="#777"/></radialGradient>
+    <mask id="cavity">
+      <rect x="8" y="8" width="637" height="389" rx="18" fill="url(#edge)"/>
+      <rect x="57" y="34" width="541" height="60" rx="5" fill="black"/>
+      <circle cx="182" cy="191" r="36" fill="black"/>
+      <circle cx="477" cy="191" r="36" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="653" height="405" fill="white" mask="url(#cavity)"/>
+</svg>
