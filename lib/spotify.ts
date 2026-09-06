@@ -1,3 +1,4 @@
+import { fetchRecentHistory, type RecentItem } from "./spotify-recent";
 import crypto from "node:crypto";
 import { openDb } from "./db";
 import { dedupHash } from "./dedup";
@@ -6,7 +7,6 @@ import { refreshSummaries } from "./summaries";
 const AUTH_URL = "https://accounts.spotify.com/authorize";
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const ME_URL = "https://api.spotify.com/v1/me";
-const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played";
 
 /**
  * The recently-played scope drives the sync; email/profile let us confirm and
@@ -235,29 +235,20 @@ async function getValidAccessToken(
   return refreshAccessToken(cfg, account);
 }
 
-interface RecentItem {
-  track: {
-    name: string;
-    uri: string;
-    duration_ms: number;
-    artists: { name: string }[];
-    album: { name: string };
-  } | null;
-  played_at: string;
-}
-
 export interface SyncResult {
   fetched: number;
   inserted: number;
   skipped: number;
   newestPlayedAt: string | null;
+  pages: number;
+  possibleGap: boolean;
 }
 
 /**
  * Pull the last batch of plays from the API and merge them into
- * listening_events (task 7.2). The Web API exposes only the most recent ~50
- * tracks, so this captures the tail since the last sync. Idempotent via the
- * shared dedup hash; re-running adds nothing.
+ * listening_events. Fetches every available 50-item page before committing.
+ * Exact API repeats are ignored by the existing hash. Cross-source export
+ * reconciliation is a separate, deferred operation.
  *
  * Note: the API does not report how long each track was listened to, so
  * ms_played is set to the track's full duration. Rows are tagged
@@ -274,20 +265,7 @@ export async function syncRecentlyPlayed(): Promise<SyncResult> {
   if (!account) throw new Error("Spotify is not connected yet.");
 
   const token = await getValidAccessToken(cfg, account);
-  const url = new URL(RECENT_URL);
-  url.searchParams.set("limit", "50");
-  if (account.last_played_at) {
-    url.searchParams.set("after", String(Date.parse(account.last_played_at)));
-  }
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    throw new Error(`recently-played failed: ${res.status} ${await res.text()}`);
-  }
-  const data = (await res.json()) as { items?: RecentItem[] };
-  const items = data.items ?? [];
+  const { items, pages, possibleGap } = await fetchRecentHistory(token, account.last_played_at);
 
   const db = openDb();
   const insert = db.prepare(
@@ -330,23 +308,30 @@ export async function syncRecentlyPlayed(): Promise<SyncResult> {
       if (!newest || it.played_at > newest) newest = it.played_at;
     }
   });
-  run(items);
+  try {
+    db.transaction(() => {
+      run(items);
 
-  db.prepare(
-    `UPDATE spotify_account
-       SET last_synced_at = ?, last_played_at = COALESCE(?, last_played_at)
-     WHERE id = 1`,
-  ).run(importedAt, newest);
-  // Keep the materialized summary tables (migration 006) in step with the
-  // events just written — pages read those tables, never the raw history.
-  if (inserted > 0) refreshSummaries(db);
-  db.close();
+      db.prepare(
+        `UPDATE spotify_account
+           SET last_synced_at = ?, last_played_at = COALESCE(?, last_played_at)
+         WHERE id = 1`,
+      ).run(importedAt, newest);
+      // Keep the materialized summary tables (migration 006) in step with the
+      // events just written — pages read those tables, never the raw history.
+      if (inserted > 0) refreshSummaries(db);
+    })();
+  } finally {
+    db.close();
+  }
 
   return {
     fetched: items.length,
     inserted,
     skipped: items.length - inserted,
     newestPlayedAt: newest,
+    pages,
+    possibleGap,
   };
 }
 

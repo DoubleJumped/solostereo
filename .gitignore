@@ -23,3 +23,8 @@ out/
 *.log
 *.tsbuildinfo
 next-env.d.ts
+
+# Temporary publishing locks and atomic snapshot builds
+data/publish.lock
+data/*.building-*
+data/*.download-*

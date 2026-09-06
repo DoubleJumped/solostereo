@@ -20,10 +20,10 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { refreshSummaries } from "../lib/summaries";
 
-const SRC = process.env.SOLOSTEREO_DB_PATH ?? path.join("data", "solostereo.db");
-const OUT = path.join("data", "demo.db");
+
 
 // Columns kept on the slim listening_events — the full §001 set minus dedup_hash.
 const COLS = [
@@ -86,7 +86,12 @@ function mb(file: string): string {
   return (fs.statSync(file).size / 1048576).toFixed(1) + " MB";
 }
 
-async function main() {
+export async function buildDemoDatabase(SRC: string, output: string) {
+  if (path.resolve(SRC).toLowerCase() === path.resolve(output).toLowerCase()) {
+    throw new Error("source and output databases must differ");
+  }
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  const OUT = output + ".building-" + process.pid;
   if (!fs.existsSync(SRC)) {
     throw new Error(`source db not found at ${SRC}`);
   }
@@ -96,6 +101,12 @@ async function main() {
 
   // Consistent snapshot copy (folds in any WAL data) via the online backup API.
   const src = new Database(SRC, { readonly: true });
+  // Check the final file against the actual credentials, including freed pages.
+  // Values stay in memory and are never printed or added to the public manifest.
+  const accountSecrets = src.prepare("SELECT access_token, refresh_token FROM spotify_account").all() as
+    { access_token: string | null; refresh_token: string | null }[];
+  const secrets = [...accountSecrets.flatMap(row => [row.access_token, row.refresh_token]), process.env.SPOTIFY_CLIENT_SECRET]
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
   await src.backup(OUT);
   src.close();
 
@@ -156,18 +167,32 @@ async function main() {
   db.pragma("wal_checkpoint(TRUNCATE)");
   db.pragma("journal_mode = DELETE");
   db.exec("VACUUM");
+  if ((db.prepare("SELECT COUNT(*) n FROM spotify_account").get() as { n: number }).n !== 0) {
+    db.close();
+    throw new Error("snapshot contains Spotify credentials");
+  }
+  if (db.pragma("quick_check", { simple: true }) !== "ok") {
+    db.close();
+    throw new Error("snapshot integrity check failed");
+  }
   db.close();
 
   fs.rmSync(`${OUT}-wal`, { force: true });
   fs.rmSync(`${OUT}-shm`, { force: true });
 
+  const publicBytes = fs.readFileSync(OUT);
+  if (secrets.some(secret => publicBytes.includes(Buffer.from(secret, "utf8")))) {
+    fs.rmSync(OUT, { force: true });
+    throw new Error("Refusing a snapshot containing credential bytes");
+  }
+  fs.renameSync(OUT, output);
   console.log(`source : ${SRC}  (${mb(SRC)})`);
-  console.log(`demo   : ${OUT}  (${mb(OUT)})`);
+  console.log(`demo   : ${output}  (${mb(output)})`);
   console.log(`rows   : ${after.n}`);
   console.log(`account rows cleared: ${cleared}`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  buildDemoDatabase(process.env.SOLOSTEREO_DB_PATH ?? path.join("data", "solostereo.db"), process.argv[2] ?? path.join("data", "demo.db"))
+    .catch(e => { console.error(e); process.exitCode = 1; });
+}

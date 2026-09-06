@@ -96,16 +96,14 @@ counts, a summary, and runs `npm run validate` automatically:
 The import is the authoritative record, but it lags by however long ago you
 last downloaded it. The **sync** page (`/sync`) keeps the archive current by
 pulling your recently played tracks straight from the Spotify Web API and
-merging them into `listening_events` with the same dedup mechanism — so the
-live sync and a future re-export can never double-count the same play.
+merging them into `listening_events` with the same dedup mechanism — with exact-duplicate protection. Reconciliation between API estimates and a
+future export is still required; the two sources can describe the same play differently.
 
-**Limitations to know first:** the Web API only exposes your **last ~50
-tracks** (there is no full-history endpoint), and it does not report how long
-each track was listened to. So: sync often enough that you don't play more
-than 50 tracks between runs, synced rows use the track's full length for
-listening time, and synced rows are tagged `source_filename = 'spotify-api'`
-so they stay distinguishable from the export. Podcasts aren't returned by this
-endpoint — they still come only from the export.
+**Limitations to know first:** Spotify returns up to **50 plays per page**.
+Sync follows all available pages, but Spotify does not guarantee a complete
+historical archive. The API reports track duration, not actual listening time;
+synced rows therefore use full track length and remain tagged as spotify-api.
+Podcast listening still comes from the Extended Streaming History export.
 
 ### One-time setup
 
@@ -157,43 +155,50 @@ from a fullscreen app/game. (`scripts\sync.cmd` does the same thing but shows a
 console window; use it for manual runs, not the scheduler.) Both cd to the
 project, run the sync, and append to `data\sync.log`.
 
-Run it **more often than once a day** — the API only keeps your last ~50
-tracks, so on a heavy listening day a daily sync can still miss plays. Every 6
-hours is a safe, cheap cadence (one API call per run). Example, registering an
-every-6-hours hidden task:
+The local task runs **every two hours**, retaining the existing 10:30 AM anchor
+(12:30 PM, 2:30 PM, and so on). It follows every available Spotify result page,
+retries brief rate limits and temporary failures, and exits nonzero on failure.
+Spotify returns at most 50 results per page and does not guarantee a complete
+historical archive; use a new Extended Streaming History export to fill older gaps.
+Cross-source reconciliation is deferred until that import is available.
 
-```powershell
-$action  = New-ScheduledTaskAction -Execute "wscript.exe" `
-             -Argument '"C:\CursorFiles\SoloStereo\scripts\sync-hidden.vbs"'
-$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date `
-             -RepetitionInterval (New-TimeSpan -Hours 6)
-Register-ScheduledTask -TaskName "solostereo-sync" -Action $action -Trigger $trigger `
-  -Description "Sync recent Spotify plays into solostereo"
-```
+## Public website updates
 
-For a fully background task that also runs when logged out, add a principal
-with `-LogonType S4U` (no stored password). Remove the task later with
-`Unregister-ScheduledTask -TaskName "solostereo-sync"`.
+The public site is https://solostereo-demo.onrender.com/. Its homepage uses the
+approved Living Tape / Liquid Mercury design, actual recent listening from the
+database, and the stereo's play button to enter the archive. The label refreshes
+every minute while visible and when returning to the tab. The animation and meters
+are decorative, not live audio measurements. The original studies remain under
+`/concepts/`.
 
-> **Currently registered on this machine** (as of 2026-06-28): task
-> `solostereo-sync` runs **every 6 hours** (4×/day) at **10:30 AM, 4:30 PM,
-> 10:30 PM, and 4:30 AM** local time, anchored to a start date of 2026-06-13.
-> The 4:30 PM run deliberately falls in the middle of the heavy daytime
-> listening window so that window gets multiple runs rather than one long gap.
-> It runs as user `wgrae` via `sync-hidden.vbs`. Inspect or change the interval
-> without re-creating the task:
->
-> ```powershell
-> # view
-> (Get-ScheduledTask -TaskName 'solostereo-sync').Triggers[0].Repetition.Interval
-> # change cadence (e.g. to every 4 hours)
-> $t = Get-ScheduledTask -TaskName 'solostereo-sync'
-> $t.Triggers[0].Repetition.Interval = 'PT4H'
-> Set-ScheduledTask -TaskName 'solostereo-sync' -Trigger $t.Triggers
-> ```
-Any gap larger than the ~50-track window can only be backfilled by
-re-requesting the Extended Streaming History export and re-importing (the
-dedup hash merges it with synced rows, no duplicates).
+`solostereo-publish` runs at **12:45 PM and 8:45 PM local time**. Both tasks run
+invisibly as the signed-in owner; missed publications catch up when the computer
+is available. Publishing retries twice at 15-minute intervals after a failure.
+The computer must be running and the user signed in, with network and GitHub CLI
+access. Inspect `data/sync.log`, `data/publish.log`, and Task Scheduler results.
+
+To install/update the schedules: `powershell -File scripts/install-schedules.ps1`.
+To publish on demand: `npm run publish:demo`. It is safe to run with unrelated
+uncommitted work: the publisher never stages source changes.
+
+Publication builds and validates a sanitized snapshot in a temporary directory,
+compresses it, and uploads an immutable asset to this repository's monthly
+`archive-YYYY-MM` GitHub release. Only the tiny `data/demo-manifest.json` is
+committed to master through the GitHub API. Render's existing auto-deploy then
+downloads that exact asset during `npm run build`, verifies its checksum, row
+count, database integrity and absence of Spotify credentials, and deploys it.
+A failed validation stops the build; it never silently deploys stale fallback
+data. No new listening means no publication or unnecessary deployment.
+
+The publisher does not update the local Git branch. Before your next code change,
+fetch and integrate the data-only commits from origin as usual. Render must keep
+automatic deployment enabled for master. GitHub publication success means the
+deployment has been requested; the Render build still needs to finish.
+
+Do not commit fresh database binaries routinely. The committed `data/demo.db`
+remains an offline development fallback; the public manifest selects deployed data.
+For an initial reviewed release, `npm run publish:demo -- --prepare` uploads the
+snapshot and writes the local manifest without committing or deploying source.
 
 ## Playlists — generate, review, push
 

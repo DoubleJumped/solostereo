@@ -40,3 +40,7 @@ The former separate circular shader masks and rotating decorative disks are repl
 ### Stereo meter cleanup
 
 Liquid Mercury remains the selected/default direction. The painted meter graphics are covered by a precisely positioned opaque readout within the existing metal bezel. `stereo-meter.css` supplies a single consistent decibel scale and two labeled, 32-segment L/R meters with held peak markers. Both channels use correlated ambient envelopes, quick attack and slower release rather than random frame-by-frame flicker. They share the cassette's animation clock, hidden-tab suspension, reduced-motion preference, and stop/resume button. No microphone, Spotify playback, or actual audio levels are read.
+
+## Production integration — September 2026
+
+The selected Liquid Mercury stereo now powers `/` through `components/cover/liquid-deck.tsx`. Production uses real listening data and the same artwork, cavity shader and meters. These standalone studies intentionally retain their sample tracks for design comparison.

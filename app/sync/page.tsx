@@ -168,8 +168,8 @@ export default async function SyncPage({
           )}
           <SyncControls />
           <p className="max-w-xl text-xs text-muted-foreground">
-            The API exposes only your last ~50 tracks, so sync often enough that
-            you don’t play more than 50 between runs. Synced rows use the track’s
+            Sync follows the available pages of up to 50 tracks each. Spotify
+            does not guarantee complete older history. Synced rows use the track’s
             full length for listening time (the API doesn’t report partial
             plays).
           </p>
