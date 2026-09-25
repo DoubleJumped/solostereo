@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "url": "https://github.com/DoubleJumped/solostereo/releases/download/archive-2026-09/archive-faf133c5ad37446d381e584e7592bb7d00497914535ccf8d946d2d8606f510b8.db.gz",
-  "sha256": "faf133c5ad37446d381e584e7592bb7d00497914535ccf8d946d2d8606f510b8",
-  "eventCount": 212274,
-  "latestPlayedAt": "2026-09-24T14:52:47.370Z",
-  "generatedAt": "2026-09-24T18:45:13.154Z"
+  "url": "https://github.com/DoubleJumped/solostereo/releases/download/archive-2026-09/archive-1ac70b24d9c0f2d18f358b28126c6b3f2674b1beb754df99382bd27b78dabf55.db.gz",
+  "sha256": "1ac70b24d9c0f2d18f358b28126c6b3f2674b1beb754df99382bd27b78dabf55",
+  "eventCount": 212295,
+  "latestPlayedAt": "2026-09-25T00:41:59.134Z",
+  "generatedAt": "2026-09-25T02:45:18.326Z"
 }
